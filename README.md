@@ -20,7 +20,7 @@ You can install this integration [manually](#manual). Hacs support hopefully soo
 
 ### HACS custom repo (for now):
 
-HACS > Integrations > 3 dots (upper top corner) > Custom repositories > URL: yo-han/Home-Assistant-Carelink, Category: Integration > Add > wait > DashCast > Install
+HACS > Integrations > 3 dots (upper top corner) > Custom repositories > URL: yo-han/Home-Assistant-Carelink, Category: Integration > Add > wait > Carelink Integration > Download
 
 ### Manual
 
