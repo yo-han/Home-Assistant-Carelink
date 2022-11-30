@@ -18,9 +18,9 @@ the [Python port](https://github.com/ondrej1024/carelink-python-client) from ano
 
 You can install this integration [manually](#manual). Hacs support hopefully soon.
 
-### HACS
+### HACS custom repo (for now):
 
-soon
+HACS > Integrations > 3 dots (upper top corner) > Custom repositories > URL: yo-han/Home-Assistant-Carelink, Category: Integration > Add > wait > DashCast > Install
 
 ### Manual
 
@@ -28,6 +28,9 @@ Copy the `custom_components/carelink` to your `custom_components` folder. Reboot
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=carelink)
 
+### Integration Login
+
+Login with your Carelink credentials and enter the two digit country code in the country field.
 
 ### Enable debug logging
 
