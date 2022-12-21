@@ -30,7 +30,7 @@ PERCENT = "%"
 SENSORS = (
     SensorEntityDescription(
         key=SENSOR_KEY_LASTSG_MMOL,
-        name="Last suger glucose level mmol",
+        name="Last glucose level mmol",
         native_unit_of_measurement=MMOL,
         state_class=SensorStateClass.MEASUREMENT,
         device_class=MOLAR_CONCENTRATION,
@@ -38,7 +38,7 @@ SENSORS = (
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_LASTSG_MGDL,
-        name="Last suger glucose level mg/dl",
+        name="Last glucose level mg/dl",
         native_unit_of_measurement=MGDL,
         state_class=SensorStateClass.MEASUREMENT,
         device_class=MOLAR_CONCENTRATION,
