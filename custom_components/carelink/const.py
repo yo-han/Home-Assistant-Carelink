@@ -13,8 +13,13 @@ SENSOR_KEY_LASTSG_MMOL = "last_sg_mmol"
 SENSOR_KEY_LASTSG_MGDL = "last_sg_mgdl"
 SENSOR_KEY_LASTSG_TIMESTAMP = "last_sg_timestamp"
 SENSOR_KEY_LASTSG_SENSOR_STATE = "last_sg_sensor_state"
-SENSOR_KEY_BATTERY_LEVEL = "battery_level"
-SENSOR_KEY_RESERVOIR_LEVEL = "reservoir level"
+SENSOR_KEY_LASTSG_TREND = "last_sg_trend"
+SENSOR_KEY_PUMP_BATTERY_LEVEL = "pump_battery_level"
+SENSOR_KEY_SENSOR_BATTERY_LEVEL = "sensor_battery_level"
+SENSOR_KEY_SENSOR_BATTERY_STATUS = "sensor_battery_status"
+SENSOR_KEY_RESERVOIR_LEVEL = "reservoir_level"
+SENSOR_KEY_RESERVOIR_AMOUNT = "reservoir_amount"
+SENSOR_KEY_RESERVOIR_REMAINING_UNITS = "reservoir_remaining_units"
 SENSOR_STATE = "sensor state"
 
 DEVICE_PUMP_SERIAL = "pump serial"
@@ -61,10 +66,34 @@ SENSORS = (
         icon="mdi:alert-circle",
     ),
     SensorEntityDescription(
-        key=SENSOR_KEY_BATTERY_LEVEL,
-        name="Battery level",
+        key=SENSOR_KEY_LASTSG_TREND,
+        name="Last glucose trend",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:chart-line",
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_PUMP_BATTERY_LEVEL,
+        name="Pump battery level",
         native_unit_of_measurement=PERCENT,
         state_class=SensorStateClass.TOTAL,
+        device_class=SensorDeviceClass.BATTERY,
+        icon="mdi:battery",
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_SENSOR_BATTERY_LEVEL,
+        name="Sensor battery level",
+        native_unit_of_measurement=PERCENT,
+        state_class=SensorStateClass.TOTAL,
+        device_class=SensorDeviceClass.BATTERY,
+        icon="mdi:battery",
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_SENSOR_BATTERY_STATUS,
+        name="Battery status",
+        native_unit_of_measurement=None,
+        state_class=None,
         device_class=SensorDeviceClass.BATTERY,
         icon="mdi:battery",
     ),
@@ -73,6 +102,22 @@ SENSORS = (
         name="Reservoir level",
         native_unit_of_measurement=PERCENT,
         state_class=SensorStateClass.TOTAL,
+        device_class=None,
+        icon="mdi:medication",
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
+        name="Reservoir remaining units",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:medication",
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_RESERVOIR_AMOUNT,
+        name="Reservoir amount",
+        native_unit_of_measurement=None,
+        state_class=None,
         device_class=None,
         icon="mdi:medication",
     ),
