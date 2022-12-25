@@ -16,7 +16,7 @@ SENSOR_KEY_LASTSG_SENSOR_STATE = "last_sg_sensor_state"
 SENSOR_KEY_LASTSG_TREND = "last_sg_trend"
 SENSOR_KEY_PUMP_BATTERY_LEVEL = "pump_battery_level"
 SENSOR_KEY_SENSOR_BATTERY_LEVEL = "sensor_battery_level"
-SENSOR_KEY_SENSOR_BATTERY_STATUS = "sensor_battery_status"
+SENSOR_KEY_CONDUIT_BATTERY_LEVEL = "conduit_battery_status"
 SENSOR_KEY_SENSOR_DURATION_HOURS = "sensor_duration_hours"
 SENSOR_KEY_RESERVOIR_LEVEL = "reservoir_level"
 SENSOR_KEY_RESERVOIR_AMOUNT = "reservoir_amount"
@@ -84,16 +84,16 @@ SENSORS = (
         icon="mdi:battery",
     ),
     SensorEntityDescription(
-        key=SENSOR_KEY_SENSOR_BATTERY_LEVEL,
-        name="Sensor battery level",
+        key=SENSOR_KEY_CONDUIT_BATTERY_LEVEL,
+        name="Conduit battery level",
         native_unit_of_measurement=PERCENT,
         state_class=SensorStateClass.TOTAL,
         device_class=None,
         icon="mdi:battery",
     ),
     SensorEntityDescription(
-        key=SENSOR_KEY_SENSOR_BATTERY_STATUS,
-        name="Battery status",
+        key=SENSOR_KEY_SENSOR_BATTERY_LEVEL,
+        name="Sensor battery level",
         native_unit_of_measurement=None,
         state_class=None,
         device_class=None,
