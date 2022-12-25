@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import logging
-
-import pytz
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -40,6 +39,7 @@ from .const import (
     SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
     SENSOR_STATE,
     SENSORS,
+    MS_TIMEZONE_TO_IANA_MAP
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,17 +91,14 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         await self.client.login()
         recent_data = await self.client.get_recent_data()
 
+        TIMEZONE = ZoneInfo(
+            MS_TIMEZONE_TO_IANA_MAP[recent_data["clientTimeZoneName"]])
+
         if "datetime" in recent_data["lastSG"]:
             last_sg = recent_data["lastSG"]
 
-            # Actually not UTC but a local datetime with UTC timezone returned by Carelink, so
-            # the timezone is stripped and the date showed as is because it will be probably
-            # in the prefered timezone
             date_time_local = datetime.strptime(
-                last_sg["datetime"], "%Y-%m-%dT%H:%M:%S.000Z"
-            )
-            time_zone = datetime.now(pytz.timezone(
-                "Europe/Amsterdam")).strftime("%z")
+                last_sg["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=None)
 
             # Update glucose data only if data was logged. Otherwise, keep the old data and
             # update the latest sensor state because it probably changed to an error state
@@ -110,10 +107,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
                     round(last_sg["sg"] * 0.0555, 2))
                 data[SENSOR_KEY_LASTSG_MGDL] = last_sg["sg"]
 
-            data[SENSOR_KEY_LASTSG_TIMESTAMP] = datetime.fromisoformat(
-                date_time_local.strftime(
-                    "%Y-%m-%d %H:%M:%S") + time_zone[0:3] + ":00"
-            )
+            data[SENSOR_KEY_LASTSG_TIMESTAMP] = date_time_local.replace(
+                tzinfo=TIMEZONE)
             data[SENSOR_KEY_LASTSG_SENSOR_STATE] = last_sg["sensorState"]
         else:
             data[SENSOR_KEY_LASTSG_MMOL] = None
