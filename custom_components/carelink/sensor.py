@@ -29,6 +29,7 @@ from .const import (
     SENSOR_KEY_PUMP_BATTERY_LEVEL,
     SENSOR_KEY_SENSOR_BATTERY_LEVEL,
     SENSOR_KEY_SENSOR_BATTERY_STATUS,
+    SENSOR_KEY_SENSOR_DURATION_HOURS,
     SENSOR_KEY_LASTSG_MGDL,
     SENSOR_KEY_LASTSG_MMOL,
     SENSOR_KEY_LASTSG_SENSOR_STATE,
@@ -123,6 +124,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data["medicalDeviceBatteryLevelPercent"]
         data[SENSOR_KEY_SENSOR_BATTERY_LEVEL] = recent_data["conduitBatteryLevel"]
         data[SENSOR_KEY_SENSOR_BATTERY_STATUS] = recent_data["conduitBatteryStatus"]
+        data[SENSOR_KEY_SENSOR_DURATION_HOURS] = recent_data["sensorDurationHours"]
         data[SENSOR_KEY_RESERVOIR_LEVEL] = recent_data["reservoirLevelPercent"]
         data[SENSOR_KEY_RESERVOIR_AMOUNT] = recent_data["reservoirAmount"]
         data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data["reservoirRemainingUnits"]
