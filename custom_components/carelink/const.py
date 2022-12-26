@@ -18,6 +18,7 @@ SENSOR_KEY_PUMP_BATTERY_LEVEL = "pump_battery_level"
 SENSOR_KEY_SENSOR_BATTERY_LEVEL = "sensor_battery_level"
 SENSOR_KEY_CONDUIT_BATTERY_LEVEL = "conduit_battery_status"
 SENSOR_KEY_SENSOR_DURATION_HOURS = "sensor_duration_hours"
+SENSOR_KEY_SENSOR_DURATION_MINUTES = "sensor_duration_minutes"
 SENSOR_KEY_RESERVOIR_LEVEL = "reservoir_level"
 SENSOR_KEY_RESERVOIR_AMOUNT = "reservoir_amount"
 SENSOR_KEY_RESERVOIR_REMAINING_UNITS = "reservoir_remaining_units"
@@ -32,7 +33,9 @@ MGDL = "mg/dl"
 MOLAR_CONCENTRATION = "molar concentration"
 DATETIME = "date/time"
 PERCENT = "%"
-DURATION = "h"
+DURATION_HOUR = "h"
+DURATION_MINUTE = "m"
+UNITS = "units"
 
 SENSORS = (
     SensorEntityDescription(
@@ -94,15 +97,23 @@ SENSORS = (
     SensorEntityDescription(
         key=SENSOR_KEY_SENSOR_BATTERY_LEVEL,
         name="Sensor battery level",
-        native_unit_of_measurement=None,
-        state_class=None,
+        native_unit_of_measurement=PERCENT,
+        state_class=SensorStateClass.TOTAL,
         device_class=None,
         icon="mdi:battery",
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_SENSOR_DURATION_HOURS,
         name="Sensor duration hours",
-        native_unit_of_measurement=DURATION,
+        native_unit_of_measurement=DURATION_HOUR,
+        state_class=None,
+        device_class=None,
+        icon="mdi:clock",
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_SENSOR_DURATION_MINUTES,
+        name="Sensor duration minutes",
+        native_unit_of_measurement=DURATION_MINUTE,
         state_class=None,
         device_class=None,
         icon="mdi:clock",
@@ -118,7 +129,7 @@ SENSORS = (
     SensorEntityDescription(
         key=SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
         name="Reservoir remaining units",
-        native_unit_of_measurement=None,
+        native_unit_of_measurement=UNITS,
         state_class=None,
         device_class=None,
         icon="mdi:medication",
