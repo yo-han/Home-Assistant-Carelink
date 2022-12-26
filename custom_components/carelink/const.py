@@ -6,6 +6,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
+
+from homeassistant.helpers.entity import EntityCategory
+
 DOMAIN = "carelink"
 CLIENT = "carelink_client"
 COORDINATOR = "coordinator"
@@ -24,6 +31,12 @@ SENSOR_KEY_RESERVOIR_LEVEL = "reservoir_level"
 SENSOR_KEY_RESERVOIR_AMOUNT = "reservoir_amount"
 SENSOR_KEY_RESERVOIR_REMAINING_UNITS = "reservoir_remaining_units"
 SENSOR_STATE = "sensor state"
+
+BINARY_SENSOR_KEY_PUMP_COMM_STATE = "binary_sensor_pump_comm_state"
+BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
+BINARY_SENSOR_KEY_CONDUIT_IN_RANGE = "binary_sensor_conduit_in_range"
+BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE = "binary_sensor_conduit_pump_in_range"
+BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE = "binary_sensor_conduit_sensor_in_range"
 
 DEVICE_PUMP_SERIAL = "pump serial"
 DEVICE_PUMP_NAME = "pump name"
@@ -46,6 +59,7 @@ SENSORS = (
         state_class=SensorStateClass.MEASUREMENT,
         device_class=MOLAR_CONCENTRATION,
         icon="mdi:water",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_LASTSG_MGDL,
@@ -54,6 +68,7 @@ SENSORS = (
         state_class=SensorStateClass.MEASUREMENT,
         device_class=MOLAR_CONCENTRATION,
         icon="mdi:water",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_LASTSG_TIMESTAMP,
@@ -61,7 +76,8 @@ SENSORS = (
         native_unit_of_measurement=DATETIME,
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.TIMESTAMP,
-        icon=None,
+        icon="mdi:clock",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_LASTSG_SENSOR_STATE,
@@ -70,6 +86,7 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:alert-circle",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_LASTSG_TREND,
@@ -78,6 +95,7 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:chart-line",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_PUMP_BATTERY_LEVEL,
@@ -86,6 +104,7 @@ SENSORS = (
         state_class=SensorStateClass.TOTAL,
         device_class=SensorDeviceClass.BATTERY,
         icon="mdi:battery",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_CONDUIT_BATTERY_LEVEL,
@@ -94,6 +113,7 @@ SENSORS = (
         state_class=SensorStateClass.TOTAL,
         device_class=None,
         icon="mdi:battery",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_SENSOR_BATTERY_LEVEL,
@@ -102,6 +122,7 @@ SENSORS = (
         state_class=SensorStateClass.TOTAL,
         device_class=None,
         icon="mdi:battery",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_SENSOR_DURATION_HOURS,
@@ -110,6 +131,7 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:clock",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_SENSOR_DURATION_MINUTES,
@@ -118,6 +140,7 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:clock",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_RESERVOIR_LEVEL,
@@ -126,6 +149,7 @@ SENSORS = (
         state_class=SensorStateClass.TOTAL,
         device_class=None,
         icon="mdi:medication",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
@@ -134,6 +158,7 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:medication",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_RESERVOIR_AMOUNT,
@@ -142,6 +167,7 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:medication",
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_STATE,
@@ -150,6 +176,45 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:leak",
+        entity_category=None,
+    ),
+)
+
+BINARY_SENSORS = (
+    SensorEntityDescription(
+        key=BINARY_SENSOR_KEY_PUMP_COMM_STATE,
+        name="Pump communitation state",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        icon="mdi:bluetooth-connect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key=BINARY_SENSOR_KEY_SENSOR_COMM_STATE,
+        name="Sensor communitation state",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        icon="mdi:bluetooth-connect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key=BINARY_SENSOR_KEY_CONDUIT_IN_RANGE,
+        name="Conduit in range",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        icon="mdi:bluetooth-connect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key=BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE,
+        name="Conduit pump in range",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        icon="mdi:bluetooth-connect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key=BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE,
+        name="Conduit sensor in range",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        icon="mdi:bluetooth-connect",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 

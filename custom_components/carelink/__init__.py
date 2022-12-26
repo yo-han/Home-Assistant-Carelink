@@ -36,10 +36,15 @@ from .const import (
     SENSOR_KEY_RESERVOIR_AMOUNT,
     SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
     SENSOR_STATE,
+    BINARY_SENSOR_KEY_PUMP_COMM_STATE,
+    BINARY_SENSOR_KEY_SENSOR_COMM_STATE,
+    BINARY_SENSOR_KEY_CONDUIT_IN_RANGE,
+    BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE,
+    BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE,
     MS_TIMEZONE_TO_IANA_MAP,
 )
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -101,6 +106,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         TIMEZONE = ZoneInfo(MS_TIMEZONE_TO_IANA_MAP[recent_data["clientTimeZoneName"]])
 
         if "datetime" in recent_data["lastSG"]:
+            ## Last Glucose level sensors
+
             last_sg = recent_data["lastSG"]
 
             date_time_local = datetime.strptime(
@@ -121,6 +128,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = None
             data[SENSOR_KEY_LASTSG_SENSOR_STATE] = None
 
+        ## Sensors
+
         data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data[
             "medicalDeviceBatteryLevelPercent"
         ]
@@ -135,6 +144,20 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         ]
         data[SENSOR_STATE] = recent_data["sensorState"]
         data[SENSOR_KEY_LASTSG_TREND] = recent_data["lastSGTrend"]
+
+        ## Binary Sensors
+
+        data[BINARY_SENSOR_KEY_PUMP_COMM_STATE] = recent_data["pumpCommunicationState"]
+        data[BINARY_SENSOR_KEY_SENSOR_COMM_STATE] = recent_data["gstCommunicationState"]
+        data[BINARY_SENSOR_KEY_CONDUIT_IN_RANGE] = recent_data["conduitInRange"]
+        data[BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE] = recent_data[
+            "conduitMedicalDeviceInRange"
+        ]
+        data[BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE] = recent_data[
+            "conduitSensorInRange"
+        ]
+
+        ## Device info
 
         data[DEVICE_PUMP_SERIAL] = recent_data["medicalDeviceSerialNumber"]
         data[DEVICE_PUMP_NAME] = (

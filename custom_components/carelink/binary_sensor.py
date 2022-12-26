@@ -1,10 +1,6 @@
-"""Support for Carelink."""
-from __future__ import annotations
-
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorStateClass,
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -21,7 +17,7 @@ from .const import (
     DEVICE_PUMP_NAME,
     DEVICE_PUMP_SERIAL,
     DOMAIN,
-    SENSORS,
+    BINARY_SENSORS,
 )
 
 
@@ -36,19 +32,19 @@ async def async_setup_entry(
 
     entities = []
 
-    for sensor_description in SENSORS:
+    for sensor_description in BINARY_SENSORS:
 
         entity_name = f"{DOMAIN} {sensor_description.name}"
 
         entities.append(
             # pylint: disable=too-many-function-args
-            CarelinkSensorEntity(coordinator, sensor_description, entity_name)
+            CarelinkConnectivityEntity(coordinator, sensor_description, entity_name)
         )
 
     async_add_entities(entities)
 
 
-class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
+class CarelinkConnectivityEntity(CoordinatorEntity, BinarySensorEntity):
     """Carelink Sensor."""
 
     def __init__(
@@ -72,20 +68,8 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
         return f"{DOMAIN.lower()}_{self.sensor_description.key}"
 
     @property
-    def native_value(self) -> float:
-        return self.coordinator.data[self.sensor_description.key]
-
-    @property
-    def device_class(self) -> SensorDeviceClass:
+    def device_class(self) -> BinarySensorDeviceClass:
         return self.sensor_description.device_class
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        return self.sensor_description.native_unit_of_measurement
-
-    @property
-    def state_class(self) -> SensorStateClass:
-        return self.sensor_description.state_class
 
     @property
     def icon(self) -> str:
@@ -103,6 +87,11 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
             manufacturer="Medtronic",
             model=self.coordinator.data[DEVICE_PUMP_MODEL],
         )
+
+    @property
+    def is_on(self) -> bool:
+        """Return the status of the requested attribute."""
+        return self.coordinator.data[self.sensor_description.key] is True
 
     @property
     def entity_category(self):
