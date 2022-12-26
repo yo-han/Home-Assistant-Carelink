@@ -14,13 +14,11 @@ the [Python port](https://github.com/ondrej1024/carelink-python-client) from ano
 - [Medtronic MiniMed 770G pump](https://www.medtronicdiabetes.com/products/minimed-770g-insulin-pump-system) (*to be confirmed*)
 - [Medtronic MiniMed 780G pump](https://www.medtronic-diabetes.co.uk/insulin-pump-therapy/minimed-780g-system)
 
-## Installation
+## Installation using HACS
 
-You can install this integration [manually](#manual). Hacs support hopefully soon.
+HACS is a community store for Home Assistant. You can install [HACS](https://github.com/custom-components/hacs) and then install `Carelink Integration` from the HACS store.
 
-### HACS custom repo (for now):
-
-HACS > Integrations > 3 dots (upper top corner) > Custom repositories > URL: yo-han/Home-Assistant-Carelink, Category: Integration > Add > wait > Carelink Integration > Download
+Then you can install the integration [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=carelink)
 
 ### Manual
 
