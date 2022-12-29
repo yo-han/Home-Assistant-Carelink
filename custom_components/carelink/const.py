@@ -20,7 +20,6 @@ COORDINATOR = "coordinator"
 SENSOR_KEY_LASTSG_MMOL = "last_sg_mmol"
 SENSOR_KEY_LASTSG_MGDL = "last_sg_mgdl"
 SENSOR_KEY_LASTSG_TIMESTAMP = "last_sg_timestamp"
-SENSOR_KEY_LASTSG_SENSOR_STATE = "last_sg_sensor_state"
 SENSOR_KEY_LASTSG_TREND = "last_sg_trend"
 SENSOR_KEY_PUMP_BATTERY_LEVEL = "pump_battery_level"
 SENSOR_KEY_SENSOR_BATTERY_LEVEL = "sensor_battery_level"
@@ -30,7 +29,6 @@ SENSOR_KEY_SENSOR_DURATION_MINUTES = "sensor_duration_minutes"
 SENSOR_KEY_RESERVOIR_LEVEL = "reservoir_level"
 SENSOR_KEY_RESERVOIR_AMOUNT = "reservoir_amount"
 SENSOR_KEY_RESERVOIR_REMAINING_UNITS = "reservoir_remaining_units"
-SENSOR_STATE = "sensor state"
 
 BINARY_SENSOR_KEY_PUMP_COMM_STATE = "binary_sensor_pump_comm_state"
 BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
@@ -77,15 +75,6 @@ SENSORS = (
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.TIMESTAMP,
         icon="mdi:clock",
-        entity_category=None,
-    ),
-    SensorEntityDescription(
-        key=SENSOR_KEY_LASTSG_SENSOR_STATE,
-        name="Last sensor state",
-        native_unit_of_measurement=None,
-        state_class=None,
-        device_class=None,
-        icon="mdi:alert-circle",
         entity_category=None,
     ),
     SensorEntityDescription(
@@ -167,15 +156,6 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:medication",
-        entity_category=None,
-    ),
-    SensorEntityDescription(
-        key=SENSOR_STATE,
-        name="Sensor state",
-        native_unit_of_measurement=None,
-        state_class=None,
-        device_class=None,
-        icon="mdi:leak",
         entity_category=None,
     ),
 )

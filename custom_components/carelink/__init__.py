@@ -29,13 +29,11 @@ from .const import (
     SENSOR_KEY_SENSOR_DURATION_MINUTES,
     SENSOR_KEY_LASTSG_MGDL,
     SENSOR_KEY_LASTSG_MMOL,
-    SENSOR_KEY_LASTSG_SENSOR_STATE,
     SENSOR_KEY_LASTSG_TIMESTAMP,
     SENSOR_KEY_LASTSG_TREND,
     SENSOR_KEY_RESERVOIR_LEVEL,
     SENSOR_KEY_RESERVOIR_AMOUNT,
     SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
-    SENSOR_STATE,
     BINARY_SENSOR_KEY_PUMP_COMM_STATE,
     BINARY_SENSOR_KEY_SENSOR_COMM_STATE,
     BINARY_SENSOR_KEY_CONDUIT_IN_RANGE,
@@ -121,12 +119,10 @@ class CarelinkCoordinator(DataUpdateCoordinator):
                 data[SENSOR_KEY_LASTSG_MGDL] = last_sg["sg"]
 
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = date_time_local.replace(tzinfo=TIMEZONE)
-            data[SENSOR_KEY_LASTSG_SENSOR_STATE] = last_sg["sensorState"]
         else:
             data[SENSOR_KEY_LASTSG_MMOL] = None
             data[SENSOR_KEY_LASTSG_MGDL] = None
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = None
-            data[SENSOR_KEY_LASTSG_SENSOR_STATE] = None
 
         ## Sensors
 
@@ -142,7 +138,6 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data[
             "reservoirRemainingUnits"
         ]
-        data[SENSOR_STATE] = recent_data["sensorState"]
         data[SENSOR_KEY_LASTSG_TREND] = recent_data["lastSGTrend"]
 
         ## Binary Sensors
