@@ -59,9 +59,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config[CONF_USERNAME], config[CONF_PASSWORD], config["country"]
     )
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {CLIENT: carelink_client}
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        CLIENT: carelink_client}
 
-    coordinator = CarelinkCoordinator(hass, entry, update_interval=SCAN_INTERVAL)
+    coordinator = CarelinkCoordinator(
+        hass, entry, update_interval=SCAN_INTERVAL)
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -101,10 +103,12 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         await self.client.login()
         recent_data = await self.client.get_recent_data()
 
-        TIMEZONE = ZoneInfo(MS_TIMEZONE_TO_IANA_MAP[recent_data["clientTimeZoneName"]])
+        TIMEZONE_MAP = MS_TIMEZONE_TO_IANA_MAP.get(
+            recent_data["clientTimeZoneName"], "Europe/London")
+        TIMEZONE = ZoneInfo(TIMEZONE_MAP)
 
         if "datetime" in recent_data["lastSG"]:
-            ## Last Glucose level sensors
+            # Last Glucose level sensors
 
             last_sg = recent_data["lastSG"]
 
@@ -115,16 +119,18 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             # Update glucose data only if data was logged. Otherwise, keep the old data and
             # update the latest sensor state because it probably changed to an error state
             if last_sg["sg"] > 0:
-                data[SENSOR_KEY_LASTSG_MMOL] = float(round(last_sg["sg"] * 0.0555, 2))
+                data[SENSOR_KEY_LASTSG_MMOL] = float(
+                    round(last_sg["sg"] * 0.0555, 2))
                 data[SENSOR_KEY_LASTSG_MGDL] = last_sg["sg"]
 
-            data[SENSOR_KEY_LASTSG_TIMESTAMP] = date_time_local.replace(tzinfo=TIMEZONE)
+            data[SENSOR_KEY_LASTSG_TIMESTAMP] = date_time_local.replace(
+                tzinfo=TIMEZONE)
         else:
             data[SENSOR_KEY_LASTSG_MMOL] = None
             data[SENSOR_KEY_LASTSG_MGDL] = None
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = None
 
-        ## Sensors
+        # Sensors
 
         data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data[
             "medicalDeviceBatteryLevelPercent"
@@ -140,7 +146,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         ]
         data[SENSOR_KEY_LASTSG_TREND] = recent_data["lastSGTrend"]
 
-        ## Binary Sensors
+        # Binary Sensors
 
         data[BINARY_SENSOR_KEY_PUMP_COMM_STATE] = recent_data["pumpCommunicationState"]
         data[BINARY_SENSOR_KEY_SENSOR_COMM_STATE] = recent_data["gstCommunicationState"]
@@ -152,7 +158,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             "conduitSensorInRange"
         ]
 
-        ## Device info
+        # Device info
 
         data[DEVICE_PUMP_SERIAL] = recent_data["medicalDeviceSerialNumber"]
         data[DEVICE_PUMP_NAME] = (

@@ -317,6 +317,7 @@ MS_TIMEZONE_TO_IANA_MAP = {
     "Kaliningrad Standard Time": "Europe/Kaliningrad",
     "FLE Standard Time": "Europe/Kiev",
     "GMT Standard Time": "Europe/London",
+    "Greenwich Mean Time":  "Europe/London",
     "Belarus Standard Time": "Europe/Minsk",
     "Russian Standard Time": "Europe/Moscow",
     "Romance Standard Time": "Europe/Paris",
