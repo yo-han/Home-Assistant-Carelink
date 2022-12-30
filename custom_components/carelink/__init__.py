@@ -18,6 +18,7 @@ from .const import (
     CLIENT,
     DOMAIN,
     COORDINATOR,
+    UNAVAILABLE,
     DEVICE_PUMP_MODEL,
     DEVICE_PUMP_NAME,
     DEVICE_PUMP_SERIAL,
@@ -103,9 +104,11 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         await self.client.login()
         recent_data = await self.client.get_recent_data()
 
-        TIMEZONE_MAP = MS_TIMEZONE_TO_IANA_MAP.get(
-            recent_data["clientTimeZoneName"], "Europe/London")
+        TIMEZONE_MAP = MS_TIMEZONE_TO_IANA_MAP.setdefault(recent_data.setdefault(
+            "clientTimeZoneName"), "Europe/London")
         TIMEZONE = ZoneInfo(TIMEZONE_MAP)
+
+        recent_data["lastSG"] = recent_data.setdefault("lastSG", {})
 
         if "datetime" in recent_data["lastSG"]:
             # Last Glucose level sensors
@@ -132,39 +135,48 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         # Sensors
 
-        data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data[
-            "medicalDeviceBatteryLevelPercent"
-        ]
-        data[SENSOR_KEY_CONDUIT_BATTERY_LEVEL] = recent_data["conduitBatteryLevel"]
-        data[SENSOR_KEY_SENSOR_BATTERY_LEVEL] = recent_data["gstBatteryLevel"]
-        data[SENSOR_KEY_SENSOR_DURATION_HOURS] = recent_data["sensorDurationHours"]
-        data[SENSOR_KEY_SENSOR_DURATION_MINUTES] = recent_data["sensorDurationMinutes"]
-        data[SENSOR_KEY_RESERVOIR_LEVEL] = recent_data["reservoirLevelPercent"]
-        data[SENSOR_KEY_RESERVOIR_AMOUNT] = recent_data["reservoirAmount"]
-        data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data[
-            "reservoirRemainingUnits"
-        ]
-        data[SENSOR_KEY_LASTSG_TREND] = recent_data["lastSGTrend"]
+        data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data.setdefault(
+            "medicalDeviceBatteryLevelPercent", UNAVAILABLE)
+        data[SENSOR_KEY_CONDUIT_BATTERY_LEVEL] = recent_data.setdefault(
+            "conduitBatteryLevel", UNAVAILABLE)
+        data[SENSOR_KEY_SENSOR_BATTERY_LEVEL] = recent_data.setdefault(
+            "gstBatteryLevel", UNAVAILABLE)
+        data[SENSOR_KEY_SENSOR_DURATION_HOURS] = recent_data.setdefault(
+            "sensorDurationHours", UNAVAILABLE)
+        data[SENSOR_KEY_SENSOR_DURATION_MINUTES] = recent_data.setdefault(
+            "sensorDurationMinutes", UNAVAILABLE)
+        data[SENSOR_KEY_RESERVOIR_LEVEL] = recent_data.setdefault(
+            "reservoirLevelPercent", UNAVAILABLE)
+        data[SENSOR_KEY_RESERVOIR_AMOUNT] = recent_data.setdefault(
+            "reservoirAmount", UNAVAILABLE)
+        data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data.setdefault(
+            "reservoirRemainingUnits", UNAVAILABLE)
+        data[SENSOR_KEY_LASTSG_TREND] = recent_data.setdefault(
+            "lastSGTrend", UNAVAILABLE)
 
         # Binary Sensors
 
-        data[BINARY_SENSOR_KEY_PUMP_COMM_STATE] = recent_data["pumpCommunicationState"]
-        data[BINARY_SENSOR_KEY_SENSOR_COMM_STATE] = recent_data["gstCommunicationState"]
-        data[BINARY_SENSOR_KEY_CONDUIT_IN_RANGE] = recent_data["conduitInRange"]
-        data[BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE] = recent_data[
-            "conduitMedicalDeviceInRange"
-        ]
-        data[BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE] = recent_data[
-            "conduitSensorInRange"
-        ]
+        data[BINARY_SENSOR_KEY_PUMP_COMM_STATE] = recent_data.setdefault(
+            "pumpCommunicationState", UNAVAILABLE)
+        data[BINARY_SENSOR_KEY_SENSOR_COMM_STATE] = recent_data.setdefault(
+            "gstCommunicationState", UNAVAILABLE)
+        data[BINARY_SENSOR_KEY_CONDUIT_IN_RANGE] = recent_data.setdefault(
+            "conduitInRange", UNAVAILABLE)
+        data[BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE] = recent_data.setdefault(
+            "conduitMedicalDeviceInRange", UNAVAILABLE)
+        data[BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE] = recent_data.setdefault(
+            "conduitSensorInRange", UNAVAILABLE)
 
         # Device info
 
-        data[DEVICE_PUMP_SERIAL] = recent_data["medicalDeviceSerialNumber"]
+        data[DEVICE_PUMP_SERIAL] = recent_data.setdefault(
+            "medicalDeviceSerialNumber", UNAVAILABLE)
         data[DEVICE_PUMP_NAME] = (
-            recent_data["firstName"] + " " + recent_data["lastName"]
+            recent_data.setdefault("firstName", "Name") + " " +
+            recent_data.setdefault("lastName", "Unvailable")
         )
-        data[DEVICE_PUMP_MODEL] = recent_data["pumpModelNumber"]
+        data[DEVICE_PUMP_MODEL] = recent_data.setdefault(
+            "pumpModelNumber", UNAVAILABLE)
 
         _LOGGER.debug("_async_update_data: %s", data)
 

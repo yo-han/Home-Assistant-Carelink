@@ -38,7 +38,8 @@ async def async_setup_entry(
 
         entities.append(
             # pylint: disable=too-many-function-args
-            CarelinkConnectivityEntity(coordinator, sensor_description, entity_name)
+            CarelinkConnectivityEntity(
+                coordinator, sensor_description, entity_name)
         )
 
     async_add_entities(entities)
@@ -91,7 +92,7 @@ class CarelinkConnectivityEntity(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return the status of the requested attribute."""
-        return self.coordinator.data[self.sensor_description.key] is True
+        return self.coordinator.data.setdefault(self.sensor_description.key, None) is True
 
     @property
     def entity_category(self):

@@ -13,6 +13,8 @@ from homeassistant.components.binary_sensor import (
 
 from homeassistant.helpers.entity import EntityCategory
 
+UNAVAILABLE = None
+
 DOMAIN = "carelink"
 CLIENT = "carelink_client"
 COORDINATOR = "coordinator"
