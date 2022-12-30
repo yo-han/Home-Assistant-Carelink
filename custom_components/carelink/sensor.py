@@ -73,7 +73,7 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self) -> float:
-        return self.coordinator.data[self.sensor_description.key]
+        return self.coordinator.data.setdefault(self.sensor_description.key, None)
 
     @property
     def device_class(self) -> SensorDeviceClass:
