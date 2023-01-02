@@ -40,7 +40,8 @@ from .const import (
     SENSOR_KEY_LAST_ALARM,
     SENSOR_KEY_LAST_ALARM_ATTRS,
     SENSOR_KEY_ACTIVE_BASAL_PATTERN,
-    SENSOR_KEY_AVG_GLUCOSE,
+    SENSOR_KEY_AVG_GLUCOSE_MMOL,
+    SENSOR_KEY_AVG_GLUCOSE_MGDL,
     SENSOR_KEY_BELOW_HYPO_LIMIT,
     SENSOR_KEY_ABOVE_HYPER_LIMIT,
     SENSOR_KEY_TIME_IN_RANGE,
@@ -216,7 +217,10 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         data[SENSOR_KEY_ACTIVE_BASAL_PATTERN] = recent_data["basel"].setdefault(
             "activeBasalPattern", UNAVAILABLE)
-        data[SENSOR_KEY_AVG_GLUCOSE] = recent_data.setdefault(
+        data[SENSOR_KEY_AVG_GLUCOSE_MMOL] = float(
+            round(recent_data.setdefault(
+                "averageSG", UNAVAILABLE) * 0.0555, 2))
+        data[SENSOR_KEY_AVG_GLUCOSE_MGDL] = recent_data.setdefault(
             "averageSG", UNAVAILABLE)
         data[SENSOR_KEY_BELOW_HYPO_LIMIT] = recent_data.setdefault(
             "belowHypoLimit", UNAVAILABLE)

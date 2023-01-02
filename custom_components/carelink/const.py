@@ -36,7 +36,8 @@ SENSOR_KEY_ACTIVE_INSULIN_ATTRS = "active_insulin_attributes"
 SENSOR_KEY_LAST_ALARM = "last_alarm"
 SENSOR_KEY_LAST_ALARM_ATTRS = "last_alarm_attributes"
 SENSOR_KEY_ACTIVE_BASAL_PATTERN = "active_basel_pattern"
-SENSOR_KEY_AVG_GLUCOSE = "average_glucose_level"
+SENSOR_KEY_AVG_GLUCOSE_MMOL = "average_glucose_level_mmol"
+SENSOR_KEY_AVG_GLUCOSE_MGDL = "average_glucose_level_mgdl"
 SENSOR_KEY_BELOW_HYPO_LIMIT = "below_hypo_limit"
 SENSOR_KEY_ABOVE_HYPER_LIMIT = "above_hyper_limit"
 SENSOR_KEY_TIME_IN_RANGE = "time_in_range"
@@ -209,7 +210,7 @@ SENSORS = (
         entity_category=None,
     ),
     SensorEntityDescription(
-        key=SENSOR_KEY_AVG_GLUCOSE,
+        key=SENSOR_KEY_AVG_GLUCOSE_MMOL,
         name="Average glucose level mmol",
         native_unit_of_measurement=MMOL,
         state_class=SensorStateClass.MEASUREMENT,
@@ -218,7 +219,7 @@ SENSORS = (
         entity_category=None,
     ),
     SensorEntityDescription(
-        key=SENSOR_KEY_AVG_GLUCOSE,
+        key=SENSOR_KEY_AVG_GLUCOSE_MGDL,
         name="Average glucose level mg/dl",
         native_unit_of_measurement=MGDL,
         state_class=SensorStateClass.MEASUREMENT,
