@@ -46,6 +46,16 @@ from .const import (
     SENSOR_KEY_TIME_IN_RANGE,
     SENSOR_KEY_MAX_AUTO_BASAL_RATE,
     SENSOR_KEY_SG_BELOW_LIMIT,
+    SENSOR_KEY_LAST_MEAL_MARKER,
+    SENSOR_KEY_LAST_MEAL_MARKER_ATTRS,
+    SENSOR_KEY_LAST_INSULINE_MARKER,
+    SENSOR_KEY_LAST_INSULINE_MARKER_ATTRS,
+    SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER,
+    SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS,
+    SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER,
+    SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER_ATTRS,
+    SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER,
+    SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS,
     BINARY_SENSOR_KEY_PUMP_COMM_STATE,
     BINARY_SENSOR_KEY_SENSOR_COMM_STATE,
     BINARY_SENSOR_KEY_CONDUIT_IN_RANGE,
@@ -120,10 +130,12 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         TIMEZONE = ZoneInfo(TIMEZONE_MAP)
 
         recent_data["lastSG"] = recent_data.setdefault("lastSG", {})
+
         recent_data["activeInsulin"] = recent_data.setdefault(
             "activeInsulin", {})
         recent_data["basel"] = recent_data.setdefault("basel", {})
         recent_data["lastAlarm"] = recent_data.setdefault("lastAlarm", {})
+        recent_data["markers"] = recent_data.setdefault("markers", [])
 
         if "datetime" in recent_data["lastSG"]:
             # Last Glucose level sensors
@@ -148,26 +160,26 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             data[SENSOR_KEY_LASTSG_MGDL] = None
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = None
 
-        # Sensors
+            # Sensors
 
-        data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data.setdefault(
-            "medicalDeviceBatteryLevelPercent", UNAVAILABLE)
-        data[SENSOR_KEY_CONDUIT_BATTERY_LEVEL] = recent_data.setdefault(
-            "conduitBatteryLevel", UNAVAILABLE)
-        data[SENSOR_KEY_SENSOR_BATTERY_LEVEL] = recent_data.setdefault(
-            "gstBatteryLevel", UNAVAILABLE)
-        data[SENSOR_KEY_SENSOR_DURATION_HOURS] = recent_data.setdefault(
-            "sensorDurationHours", UNAVAILABLE)
-        data[SENSOR_KEY_SENSOR_DURATION_MINUTES] = recent_data.setdefault(
-            "sensorDurationMinutes", UNAVAILABLE)
-        data[SENSOR_KEY_RESERVOIR_LEVEL] = recent_data.setdefault(
-            "reservoirLevelPercent", UNAVAILABLE)
-        data[SENSOR_KEY_RESERVOIR_AMOUNT] = recent_data.setdefault(
-            "reservoirAmount", UNAVAILABLE)
-        data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data.setdefault(
-            "reservoirRemainingUnits", UNAVAILABLE)
-        data[SENSOR_KEY_LASTSG_TREND] = recent_data.setdefault(
-            "lastSGTrend", UNAVAILABLE)
+            data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data.setdefault(
+                "medicalDeviceBatteryLevelPercent", UNAVAILABLE)
+            data[SENSOR_KEY_CONDUIT_BATTERY_LEVEL] = recent_data.setdefault(
+                "conduitBatteryLevel", UNAVAILABLE)
+            data[SENSOR_KEY_SENSOR_BATTERY_LEVEL] = recent_data.setdefault(
+                "gstBatteryLevel", UNAVAILABLE)
+            data[SENSOR_KEY_SENSOR_DURATION_HOURS] = recent_data.setdefault(
+                "sensorDurationHours", UNAVAILABLE)
+            data[SENSOR_KEY_SENSOR_DURATION_MINUTES] = recent_data.setdefault(
+                "sensorDurationMinutes", UNAVAILABLE)
+            data[SENSOR_KEY_RESERVOIR_LEVEL] = recent_data.setdefault(
+                "reservoirLevelPercent", UNAVAILABLE)
+            data[SENSOR_KEY_RESERVOIR_AMOUNT] = recent_data.setdefault(
+                "reservoirAmount", UNAVAILABLE)
+            data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data.setdefault(
+                "reservoirRemainingUnits", UNAVAILABLE)
+            data[SENSOR_KEY_LASTSG_TREND] = recent_data.setdefault(
+                "lastSGTrend", UNAVAILABLE)
 
         if "amount" in recent_data["activeInsulin"]:
             # Active insuline sensor
@@ -217,6 +229,49 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         data[SENSOR_KEY_SG_BELOW_LIMIT] = recent_data.setdefault(
             "sgBelowLimit", UNAVAILABLE)
 
+        lastMealMarker = getLastMarker("MEAL", recent_data["markers"])
+
+        if lastMealMarker is not None:
+            data[SENSOR_KEY_LAST_MEAL_MARKER] = lastMealMarker["DATETIME"]
+            data[SENSOR_KEY_LAST_MEAL_MARKER_ATTRS] = lastMealMarker["ATTRS"]
+        else:
+            data[SENSOR_KEY_LAST_MEAL_MARKER] = None
+
+        lastInsulineMarker = getLastMarker("INSULIN", recent_data["markers"])
+
+        if lastInsulineMarker is not None:
+            data[SENSOR_KEY_LAST_INSULINE_MARKER] = lastInsulineMarker["DATETIME"]
+            data[SENSOR_KEY_LAST_INSULINE_MARKER_ATTRS] = lastInsulineMarker["ATTRS"]
+        else:
+            data[SENSOR_KEY_LAST_INSULINE_MARKER] = None
+
+        lastAutoBaselMarker = getLastMarker(
+            "AUTO_BASAL_DELIVERY", recent_data["markers"])
+
+        if lastAutoBaselMarker is not None:
+            data[SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER] = lastAutoBaselMarker["DATETIME"]
+            data[SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS] = lastAutoBaselMarker["ATTRS"]
+        else:
+            data[SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER] = None
+
+        lastAutoModeStatusMarker = getLastMarker(
+            "AUTO_MODE_STATUS", recent_data["markers"])
+
+        if lastAutoModeStatusMarker is not None:
+            data[SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER] = lastAutoModeStatusMarker["DATETIME"]
+            data[SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER_ATTRS] = lastAutoModeStatusMarker["ATTRS"]
+        else:
+            data[SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER] = None
+
+        lastLowGlucoseMarker = getLastMarker(
+            "LOW_GLUCOSE_SUSPENDED", recent_data["markers"])
+
+        if lastLowGlucoseMarker is not None:
+            data[SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER] = lastLowGlucoseMarker["DATETIME"]
+            data[SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS] = lastAutoModeStatusMarker["ATTRS"]
+        else:
+            data[SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER] = None
+
         # Binary Sensors
 
         data[BINARY_SENSOR_KEY_PUMP_COMM_STATE] = recent_data.setdefault(
@@ -244,3 +299,20 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("_async_update_data: %s", data)
 
         return data
+
+
+def getLastMarker(type: str, markers: list) -> dict:
+
+    filteredArray = [marker for marker in markers if marker["type"] == type]
+    sortedArray = sorted(
+        filteredArray,
+        key=lambda x: datetime.strptime(x['dateTime'], "%Y-%m-%dT%H:%M:%S.000-00:00"), reverse=True
+    )
+
+    try:
+        lastMarker = sortedArray[0]
+        map(lastMarker.pop, ["version", "kind", "index"])
+
+        return {"DATETIME": datetime.strptime(lastMarker["dateTime"], "%Y-%m-%dT%H:%M:%S.000-00:00").replace(tzinfo=None), "ATTRS": lastMarker}
+    except IndexError:
+        return None

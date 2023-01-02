@@ -42,6 +42,16 @@ SENSOR_KEY_ABOVE_HYPER_LIMIT = "above_hyper_limit"
 SENSOR_KEY_TIME_IN_RANGE = "time_in_range"
 SENSOR_KEY_MAX_AUTO_BASAL_RATE = "max_auto_basel_rate"
 SENSOR_KEY_SG_BELOW_LIMIT = "sg_below_limit"
+SENSOR_KEY_LAST_MEAL_MARKER = "last_marker_meal"
+SENSOR_KEY_LAST_MEAL_MARKER_ATTRS = "last_marker_meal_attributes"
+SENSOR_KEY_LAST_INSULINE_MARKER = "last_marker_insuline"
+SENSOR_KEY_LAST_INSULINE_MARKER_ATTRS = "last_marker_insuline_attributes"
+SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER = "last_marker_auto_basel_delivery"
+SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS = "last_marker_auto_basel_delivery_attributes"
+SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER = "last_marker_auto_mode_status"
+SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER_ATTRS = "last_marker_auto_mode_status_attributes"
+SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER = "last_marker_low_glucose_suspend"
+SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS = "last_marker_low_glucose_suspend_attributes"
 
 BINARY_SENSOR_KEY_PUMP_COMM_STATE = "binary_sensor_pump_comm_state"
 BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
@@ -259,6 +269,51 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon=None,
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_LAST_MEAL_MARKER,
+        name="Last meal marker",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:calendar-alert",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_LAST_INSULINE_MARKER,
+        name="Last insuline marker",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:calendar-alert",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER,
+        name="Last auto basel delivery marker",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:calendar-alert",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER,
+        name="Last auto mode status marker",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:calendar-alert",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER,
+        name="Last low glucose suspended marker",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:calendar-alert",
         entity_category=None,
     ),
 )
