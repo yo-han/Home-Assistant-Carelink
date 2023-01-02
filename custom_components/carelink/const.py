@@ -31,8 +31,8 @@ SENSOR_KEY_SENSOR_DURATION_MINUTES = "sensor_duration_minutes"
 SENSOR_KEY_RESERVOIR_LEVEL = "reservoir_level"
 SENSOR_KEY_RESERVOIR_AMOUNT = "reservoir_amount"
 SENSOR_KEY_RESERVOIR_REMAINING_UNITS = "reservoir_remaining_units"
-SENSOR_KEY_ACTIVE_INSULIN = "active_insuline"
-SENSOR_KEY_ACTIVE_INSULIN_ATTRS = "active_insuline_attributes"
+SENSOR_KEY_ACTIVE_INSULIN = "active_insulin"
+SENSOR_KEY_ACTIVE_INSULIN_ATTRS = "active_insulin_attributes"
 SENSOR_KEY_LAST_ALARM = "last_alarm"
 SENSOR_KEY_LAST_ALARM_ATTRS = "last_alarm_attributes"
 SENSOR_KEY_ACTIVE_BASAL_PATTERN = "active_basel_pattern"
@@ -44,8 +44,8 @@ SENSOR_KEY_MAX_AUTO_BASAL_RATE = "max_auto_basel_rate"
 SENSOR_KEY_SG_BELOW_LIMIT = "sg_below_limit"
 SENSOR_KEY_LAST_MEAL_MARKER = "last_marker_meal"
 SENSOR_KEY_LAST_MEAL_MARKER_ATTRS = "last_marker_meal_attributes"
-SENSOR_KEY_LAST_INSULINE_MARKER = "last_marker_insuline"
-SENSOR_KEY_LAST_INSULINE_MARKER_ATTRS = "last_marker_insuline_attributes"
+SENSOR_KEY_LAST_INSULIN_MARKER = "last_marker_insulin"
+SENSOR_KEY_LAST_INSULIN_MARKER_ATTRS = "last_marker_insulin_attributes"
 SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER = "last_marker_auto_basel_delivery"
 SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS = "last_marker_auto_basel_delivery_attributes"
 SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER = "last_marker_auto_mode_status"
@@ -183,7 +183,7 @@ SENSORS = (
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_ACTIVE_INSULIN,
-        name="Active insuline",
+        name="Active insulin",
         native_unit_of_measurement=None,
         state_class=None,
         device_class=None,
@@ -281,8 +281,8 @@ SENSORS = (
         entity_category=None,
     ),
     SensorEntityDescription(
-        key=SENSOR_KEY_LAST_INSULINE_MARKER,
-        name="Last insuline marker",
+        key=SENSOR_KEY_LAST_INSULIN_MARKER,
+        name="Last insulin marker",
         native_unit_of_measurement=None,
         state_class=None,
         device_class=None,
