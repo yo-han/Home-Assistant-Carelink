@@ -107,3 +107,9 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
     @property
     def entity_category(self):
         return self.sensor_description.entity_category
+
+    @property
+    def extra_state_attributes(self):
+        attrKey = "{}_attributes".format(self.sensor_description.key)
+
+        return self.coordinator.data.setdefault(attrKey, {})
