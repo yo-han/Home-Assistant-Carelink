@@ -161,26 +161,26 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             data[SENSOR_KEY_LASTSG_MGDL] = None
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = None
 
-            # Sensors
+        # Sensors
 
-            data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data.setdefault(
-                "medicalDeviceBatteryLevelPercent", UNAVAILABLE)
-            data[SENSOR_KEY_CONDUIT_BATTERY_LEVEL] = recent_data.setdefault(
-                "conduitBatteryLevel", UNAVAILABLE)
-            data[SENSOR_KEY_SENSOR_BATTERY_LEVEL] = recent_data.setdefault(
-                "gstBatteryLevel", UNAVAILABLE)
-            data[SENSOR_KEY_SENSOR_DURATION_HOURS] = recent_data.setdefault(
-                "sensorDurationHours", UNAVAILABLE)
-            data[SENSOR_KEY_SENSOR_DURATION_MINUTES] = recent_data.setdefault(
-                "sensorDurationMinutes", UNAVAILABLE)
-            data[SENSOR_KEY_RESERVOIR_LEVEL] = recent_data.setdefault(
-                "reservoirLevelPercent", UNAVAILABLE)
-            data[SENSOR_KEY_RESERVOIR_AMOUNT] = recent_data.setdefault(
-                "reservoirAmount", UNAVAILABLE)
-            data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data.setdefault(
-                "reservoirRemainingUnits", UNAVAILABLE)
-            data[SENSOR_KEY_LASTSG_TREND] = recent_data.setdefault(
-                "lastSGTrend", UNAVAILABLE)
+        data[SENSOR_KEY_PUMP_BATTERY_LEVEL] = recent_data.setdefault(
+            "medicalDeviceBatteryLevelPercent", UNAVAILABLE)
+        data[SENSOR_KEY_CONDUIT_BATTERY_LEVEL] = recent_data.setdefault(
+            "conduitBatteryLevel", UNAVAILABLE)
+        data[SENSOR_KEY_SENSOR_BATTERY_LEVEL] = recent_data.setdefault(
+            "gstBatteryLevel", UNAVAILABLE)
+        data[SENSOR_KEY_SENSOR_DURATION_HOURS] = recent_data.setdefault(
+            "sensorDurationHours", UNAVAILABLE)
+        data[SENSOR_KEY_SENSOR_DURATION_MINUTES] = recent_data.setdefault(
+            "sensorDurationMinutes", UNAVAILABLE)
+        data[SENSOR_KEY_RESERVOIR_LEVEL] = recent_data.setdefault(
+            "reservoirLevelPercent", UNAVAILABLE)
+        data[SENSOR_KEY_RESERVOIR_AMOUNT] = recent_data.setdefault(
+            "reservoirAmount", UNAVAILABLE)
+        data[SENSOR_KEY_RESERVOIR_REMAINING_UNITS] = recent_data.setdefault(
+            "reservoirRemainingUnits", UNAVAILABLE)
+        data[SENSOR_KEY_LASTSG_TREND] = recent_data.setdefault(
+            "lastSGTrend", UNAVAILABLE)
 
         if "amount" in recent_data["activeInsulin"]:
             # Active insulin sensor
@@ -215,7 +215,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             data[SENSOR_KEY_ACTIVE_INSULIN] = None
             data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {}
 
-        data[SENSOR_KEY_ACTIVE_BASAL_PATTERN] = recent_data["basel"].setdefault(
+        data[SENSOR_KEY_ACTIVE_BASAL_PATTERN] = recent_data["basal"].setdefault(
             "activeBasalPattern", UNAVAILABLE)
         data[SENSOR_KEY_AVG_GLUCOSE_MMOL] = float(
             round(recent_data.setdefault(
