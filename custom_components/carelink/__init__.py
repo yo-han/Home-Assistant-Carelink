@@ -35,6 +35,17 @@ from .const import (
     SENSOR_KEY_RESERVOIR_LEVEL,
     SENSOR_KEY_RESERVOIR_AMOUNT,
     SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
+    SENSOR_KEY_ACTIVE_INSULIN,
+    SENSOR_KEY_ACTIVE_INSULIN_ATTRS,
+    SENSOR_KEY_LAST_ALARM,
+    SENSOR_KEY_LAST_ALARM_ATTRS,
+    SENSOR_KEY_ACTIVE_BASAL_PATTERN,
+    SENSOR_KEY_AVG_GLUCOSE,
+    SENSOR_KEY_BELOW_HYPO_LIMIT,
+    SENSOR_KEY_ABOVE_HYPER_LIMIT,
+    SENSOR_KEY_TIME_IN_RANGE,
+    SENSOR_KEY_MAX_AUTO_BASAL_RATE,
+    SENSOR_KEY_SG_BELOW_LIMIT,
     BINARY_SENSOR_KEY_PUMP_COMM_STATE,
     BINARY_SENSOR_KEY_SENSOR_COMM_STATE,
     BINARY_SENSOR_KEY_CONDUIT_IN_RANGE,
@@ -109,6 +120,10 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         TIMEZONE = ZoneInfo(TIMEZONE_MAP)
 
         recent_data["lastSG"] = recent_data.setdefault("lastSG", {})
+        recent_data["activeInsulin"] = recent_data.setdefault(
+            "activeInsulin", {})
+        recent_data["basel"] = recent_data.setdefault("basel", {})
+        recent_data["lastAlarm"] = recent_data.setdefault("lastAlarm", {})
 
         if "datetime" in recent_data["lastSG"]:
             # Last Glucose level sensors
@@ -153,6 +168,54 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             "reservoirRemainingUnits", UNAVAILABLE)
         data[SENSOR_KEY_LASTSG_TREND] = recent_data.setdefault(
             "lastSGTrend", UNAVAILABLE)
+
+        if "amount" in recent_data["activeInsulin"]:
+            # Active insuline sensor
+
+            activeInsulin = recent_data["activeInsulin"]
+
+            date_time_local = datetime.strptime(
+                activeInsulin["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ"
+            ).replace(tzinfo=None)
+
+            data[SENSOR_KEY_ACTIVE_INSULIN] = recent_data["activeInsulin"].setdefault(
+                "amount", UNAVAILABLE)
+            data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {
+                "last_update": date_time_local.replace(tzinfo=TIMEZONE)}
+        else:
+            data[SENSOR_KEY_ACTIVE_INSULIN] = None
+            data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {}
+
+        if "datetime" in recent_data["lastAlarm"]:
+            # Last alarm sensor
+
+            lastAlarm = recent_data["lastAlarm"]
+
+            date_time_local = datetime.strptime(
+                lastAlarm["datetime"], "%Y-%m-%dT%H:%M:%S.000-00:00"
+            ).replace(tzinfo=None)
+
+            data[SENSOR_KEY_LAST_ALARM] = date_time_local.replace(
+                tzinfo=TIMEZONE)
+            data[SENSOR_KEY_LAST_ALARM_ATTRS] = lastAlarm
+        else:
+            data[SENSOR_KEY_ACTIVE_INSULIN] = None
+            data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {}
+
+        data[SENSOR_KEY_ACTIVE_BASAL_PATTERN] = recent_data["basel"].setdefault(
+            "activeBasalPattern", UNAVAILABLE)
+        data[SENSOR_KEY_AVG_GLUCOSE] = recent_data.setdefault(
+            "averageSG", UNAVAILABLE)
+        data[SENSOR_KEY_BELOW_HYPO_LIMIT] = recent_data.setdefault(
+            "belowHypoLimit", UNAVAILABLE)
+        data[SENSOR_KEY_ABOVE_HYPER_LIMIT] = recent_data.setdefault(
+            "aboveHyperLimit", UNAVAILABLE)
+        data[SENSOR_KEY_TIME_IN_RANGE] = recent_data.setdefault(
+            "timeInRange", UNAVAILABLE)
+        data[SENSOR_KEY_MAX_AUTO_BASAL_RATE] = recent_data.setdefault(
+            "maxAutoBasalRate", UNAVAILABLE)
+        data[SENSOR_KEY_SG_BELOW_LIMIT] = recent_data.setdefault(
+            "sgBelowLimit", UNAVAILABLE)
 
         # Binary Sensors
 

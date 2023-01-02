@@ -31,6 +31,17 @@ SENSOR_KEY_SENSOR_DURATION_MINUTES = "sensor_duration_minutes"
 SENSOR_KEY_RESERVOIR_LEVEL = "reservoir_level"
 SENSOR_KEY_RESERVOIR_AMOUNT = "reservoir_amount"
 SENSOR_KEY_RESERVOIR_REMAINING_UNITS = "reservoir_remaining_units"
+SENSOR_KEY_ACTIVE_INSULIN = "active_insuline"
+SENSOR_KEY_ACTIVE_INSULIN_ATTRS = "active_insuline_attributes"
+SENSOR_KEY_LAST_ALARM = "last_alarm"
+SENSOR_KEY_LAST_ALARM_ATTRS = "last_alarm_attributes"
+SENSOR_KEY_ACTIVE_BASAL_PATTERN = "active_basel_pattern"
+SENSOR_KEY_AVG_GLUCOSE = "average_glucose_level"
+SENSOR_KEY_BELOW_HYPO_LIMIT = "below_hypo_limit"
+SENSOR_KEY_ABOVE_HYPER_LIMIT = "above_hyper_limit"
+SENSOR_KEY_TIME_IN_RANGE = "time_in_range"
+SENSOR_KEY_MAX_AUTO_BASAL_RATE = "max_auto_basel_rate"
+SENSOR_KEY_SG_BELOW_LIMIT = "sg_below_limit"
 
 BINARY_SENSOR_KEY_PUMP_COMM_STATE = "binary_sensor_pump_comm_state"
 BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
@@ -158,6 +169,96 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:medication",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_ACTIVE_INSULIN,
+        name="Active insuline",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:water-alert",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_LAST_ALARM,
+        name="Last alarm",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:clock",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_ACTIVE_BASAL_PATTERN,
+        name="Active basel pattern",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon="mdi:chart-line",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_AVG_GLUCOSE,
+        name="Average glucose level mmol",
+        native_unit_of_measurement=MMOL,
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=MOLAR_CONCENTRATION,
+        icon="mdi:chart-line",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_AVG_GLUCOSE,
+        name="Average glucose level mg/dl",
+        native_unit_of_measurement=MGDL,
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=MOLAR_CONCENTRATION,
+        icon="mdi:chart-line",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_BELOW_HYPO_LIMIT,
+        name="Below hypo limit",
+        native_unit_of_measurement=PERCENT,
+        state_class=SensorStateClass.TOTAL,
+        device_class=None,
+        icon=None,
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_ABOVE_HYPER_LIMIT,
+        name="Above hyper limit",
+        native_unit_of_measurement=PERCENT,
+        state_class=SensorStateClass.TOTAL,
+        device_class=None,
+        icon=None,
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_TIME_IN_RANGE,
+        name="Time in range",
+        native_unit_of_measurement=PERCENT,
+        state_class=SensorStateClass.TOTAL,
+        device_class=None,
+        icon=None,
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_MAX_AUTO_BASAL_RATE,
+        name="Max auto basel rate",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon=None,
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_SG_BELOW_LIMIT,
+        name="Glucose below limit",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=None,
+        icon=None,
         entity_category=None,
     ),
 )
