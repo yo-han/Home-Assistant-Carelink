@@ -48,8 +48,8 @@ from .const import (
     SENSOR_KEY_SG_BELOW_LIMIT,
     SENSOR_KEY_LAST_MEAL_MARKER,
     SENSOR_KEY_LAST_MEAL_MARKER_ATTRS,
-    SENSOR_KEY_LAST_INSULINE_MARKER,
-    SENSOR_KEY_LAST_INSULINE_MARKER_ATTRS,
+    SENSOR_KEY_LAST_INSULIN_MARKER,
+    SENSOR_KEY_LAST_INSULIN_MARKER_ATTRS,
     SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER,
     SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS,
     SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER,
@@ -182,7 +182,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
                 "lastSGTrend", UNAVAILABLE)
 
         if "amount" in recent_data["activeInsulin"]:
-            # Active insuline sensor
+            # Active insulin sensor
 
             activeInsulin = recent_data["activeInsulin"]
 
@@ -240,10 +240,10 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         lastInsulineMarker = getLastMarker("INSULIN", recent_data["markers"])
 
         if lastInsulineMarker is not None:
-            data[SENSOR_KEY_LAST_INSULINE_MARKER] = lastInsulineMarker["DATETIME"]
-            data[SENSOR_KEY_LAST_INSULINE_MARKER_ATTRS] = lastInsulineMarker["ATTRS"]
+            data[SENSOR_KEY_LAST_INSULIN_MARKER] = lastInsulineMarker["DATETIME"]
+            data[SENSOR_KEY_LAST_INSULIN_MARKER_ATTRS] = lastInsulineMarker["ATTRS"]
         else:
-            data[SENSOR_KEY_LAST_INSULINE_MARKER] = None
+            data[SENSOR_KEY_LAST_INSULIN_MARKER] = None
 
         lastAutoBaselMarker = getLastMarker(
             "AUTO_BASAL_DELIVERY", recent_data["markers"])
