@@ -8,7 +8,6 @@ from homeassistant.components.sensor import (
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
-    BinarySensorEntity,
 )
 
 from homeassistant.helpers.entity import EntityCategory
@@ -35,24 +34,30 @@ SENSOR_KEY_ACTIVE_INSULIN = "active_insulin"
 SENSOR_KEY_ACTIVE_INSULIN_ATTRS = "active_insulin_attributes"
 SENSOR_KEY_LAST_ALARM = "last_alarm"
 SENSOR_KEY_LAST_ALARM_ATTRS = "last_alarm_attributes"
-SENSOR_KEY_ACTIVE_BASAL_PATTERN = "active_basel_pattern"
+SENSOR_KEY_ACTIVE_BASAL_PATTERN = "active_basal_pattern"
 SENSOR_KEY_AVG_GLUCOSE_MMOL = "average_glucose_level_mmol"
 SENSOR_KEY_AVG_GLUCOSE_MGDL = "average_glucose_level_mgdl"
 SENSOR_KEY_BELOW_HYPO_LIMIT = "below_hypo_limit"
 SENSOR_KEY_ABOVE_HYPER_LIMIT = "above_hyper_limit"
 SENSOR_KEY_TIME_IN_RANGE = "time_in_range"
-SENSOR_KEY_MAX_AUTO_BASAL_RATE = "max_auto_basel_rate"
+SENSOR_KEY_MAX_AUTO_BASAL_RATE = "max_auto_basal_rate"
 SENSOR_KEY_SG_BELOW_LIMIT = "sg_below_limit"
 SENSOR_KEY_LAST_MEAL_MARKER = "last_marker_meal"
 SENSOR_KEY_LAST_MEAL_MARKER_ATTRS = "last_marker_meal_attributes"
 SENSOR_KEY_LAST_INSULIN_MARKER = "last_marker_insulin"
 SENSOR_KEY_LAST_INSULIN_MARKER_ATTRS = "last_marker_insulin_attributes"
-SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER = "last_marker_auto_basel_delivery"
-SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS = "last_marker_auto_basel_delivery_attributes"
+SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER = "last_marker_auto_basal_delivery"
+SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS = (
+    "last_marker_auto_basal_delivery_attributes"
+)
 SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER = "last_marker_auto_mode_status"
-SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER_ATTRS = "last_marker_auto_mode_status_attributes"
+SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER_ATTRS = (
+    "last_marker_auto_mode_status_attributes"
+)
 SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER = "last_marker_low_glucose_suspend"
-SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS = "last_marker_low_glucose_suspend_attributes"
+SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS = (
+    "last_marker_low_glucose_suspend_attributes"
+)
 
 BINARY_SENSOR_KEY_PUMP_COMM_STATE = "binary_sensor_pump_comm_state"
 BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
@@ -96,8 +101,8 @@ SENSORS = (
         key=SENSOR_KEY_LASTSG_TIMESTAMP,
         name="Last sensor update",
         native_unit_of_measurement=DATETIME,
-        state_class=SensorStateClass.MEASUREMENT,
-        device_class=SensorDeviceClass.TIMESTAMP,
+        state_class=None,
+        device_class=None,
         icon="mdi:clock",
         entity_category=None,
     ),
@@ -202,7 +207,7 @@ SENSORS = (
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_ACTIVE_BASAL_PATTERN,
-        name="Active basel pattern",
+        name="Active basal pattern",
         native_unit_of_measurement=None,
         state_class=None,
         device_class=None,
@@ -256,7 +261,7 @@ SENSORS = (
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_MAX_AUTO_BASAL_RATE,
-        name="Max auto basel rate",
+        name="Max auto basal rate",
         native_unit_of_measurement=None,
         state_class=None,
         device_class=None,
@@ -292,7 +297,7 @@ SENSORS = (
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER,
-        name="Last auto basel delivery marker",
+        name="Last auto basal delivery marker",
         native_unit_of_measurement=None,
         state_class=None,
         device_class=None,
@@ -476,7 +481,7 @@ MS_TIMEZONE_TO_IANA_MAP = {
     "Kaliningrad Standard Time": "Europe/Kaliningrad",
     "FLE Standard Time": "Europe/Kiev",
     "GMT Standard Time": "Europe/London",
-    "Greenwich Mean Time":  "Europe/London",
+    "Greenwich Mean Time": "Europe/London",
     "Belarus Standard Time": "Europe/Minsk",
     "Russian Standard Time": "Europe/Moscow",
     "Romance Standard Time": "Europe/Paris",
