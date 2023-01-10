@@ -256,7 +256,9 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         last_meal_marker = get_last_marker("MEAL", recent_data["markers"])
 
         if last_meal_marker is not None:
-            data[SENSOR_KEY_LAST_MEAL_MARKER] = last_meal_marker["DATETIME"]
+            data[SENSOR_KEY_LAST_MEAL_MARKER] = last_meal_marker["DATETIME"].replace(
+                tzinfo=timezone
+            )
             data[SENSOR_KEY_LAST_MEAL_MARKER_ATTRS] = last_meal_marker["ATTRS"]
         else:
             data[SENSOR_KEY_LAST_MEAL_MARKER] = UNAVAILABLE
@@ -264,7 +266,9 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         last_insuline_marker = get_last_marker("INSULIN", recent_data["markers"])
 
         if last_insuline_marker is not None:
-            data[SENSOR_KEY_LAST_INSULIN_MARKER] = last_insuline_marker["DATETIME"]
+            data[SENSOR_KEY_LAST_INSULIN_MARKER] = last_insuline_marker[
+                "DATETIME"
+            ].replace(tzinfo=timezone)
             data[SENSOR_KEY_LAST_INSULIN_MARKER_ATTRS] = last_insuline_marker["ATTRS"]
         else:
             data[SENSOR_KEY_LAST_INSULIN_MARKER] = UNAVAILABLE
@@ -276,7 +280,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         if last_autobasal_marker is not None:
             data[SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER] = last_autobasal_marker[
                 "DATETIME"
-            ]
+            ].replace(tzinfo=timezone)
             data[
                 SENSOR_KEY_LAST_AUTO_BASAL_DELIVERY_MARKER_ATTRS
             ] = last_autobasal_marker["ATTRS"]
@@ -290,7 +294,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         if last_auto_mode_status_marker is not None:
             data[
                 SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER
-            ] = last_auto_mode_status_marker["DATETIME"]
+            ] = last_auto_mode_status_marker["DATETIME"].replace(tzinfo=timezone)
             data[
                 SENSOR_KEY_LAST_AUTO_MODE_STATUS_MARKER_ATTRS
             ] = last_auto_mode_status_marker["ATTRS"]
@@ -304,7 +308,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         if last_low_glucose_marker is not None:
             data[
                 SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER
-            ] = last_low_glucose_marker["DATETIME"]
+            ] = last_low_glucose_marker["DATETIME"].replace(tzinfo=timezone)
             data[
                 SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS
             ] = last_low_glucose_marker["ATTRS"]
