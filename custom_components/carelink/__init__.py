@@ -218,8 +218,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             data[SENSOR_KEY_LAST_ALARM] = date_time_local.replace(tzinfo=timezone)
             data[SENSOR_KEY_LAST_ALARM_ATTRS] = last_alarm
         else:
-            data[SENSOR_KEY_ACTIVE_INSULIN] = None
-            data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {}
+            data[SENSOR_KEY_LAST_ALARM] = None
+            data[SENSOR_KEY_LAST_ALARM_ATTRS] = {}
 
         if (
             recent_data["basal"] is not None
