@@ -140,8 +140,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
             last_sg = recent_data["lastSG"]
 
-            date_time_local = datetime.strptime(
-                last_sg["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ"
+            date_time_local = datetime.fromisoformat(
+                last_sg["datetime"]
             ).replace(tzinfo=None)
 
             # Update glucose data only if data was logged. Otherwise, keep the old data and
@@ -196,8 +196,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             )
 
             if "datetime" in active_insulin:
-                date_time_local = datetime.strptime(
-                    active_insulin["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ"
+                date_time_local = datetime.fromisoformat(
+                    active_insulin["datetime"]
                 ).replace(tzinfo=None)
                 data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {
                     "last_update": date_time_local.replace(tzinfo=timezone)
@@ -211,8 +211,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
             last_alarm = recent_data["lastAlarm"]
 
-            date_time_local = datetime.strptime(
-                last_alarm["datetime"], "%Y-%m-%dT%H:%M:%S.000-00:00"
+            date_time_local = datetime.fromisoformat(
+                last_alarm["datetime"]
             ).replace(tzinfo=None)
 
             data[SENSOR_KEY_LAST_ALARM] = date_time_local.replace(tzinfo=timezone)
@@ -355,7 +355,7 @@ def get_last_marker(marker_type: str, markers: list) -> dict:
     filtered_array = [marker for marker in markers if marker["type"] == marker_type]
     sorted_array = sorted(
         filtered_array,
-        key=lambda x: datetime.strptime(x["dateTime"], "%Y-%m-%dT%H:%M:%S.000-00:00"),
+        key=lambda x: datetime.fromisoformat(x["dateTime"]),
         reverse=True,
     )
 
@@ -364,8 +364,8 @@ def get_last_marker(marker_type: str, markers: list) -> dict:
         map(last_marker.pop, ["version", "kind", "index"])
 
         return {
-            "DATETIME": datetime.strptime(
-                last_marker["dateTime"], "%Y-%m-%dT%H:%M:%S.000-00:00"
+            "DATETIME": datetime.fromisoformat(
+                last_marker["dateTime"]
             ).replace(tzinfo=None),
             "ATTRS": last_marker,
         }
