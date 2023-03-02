@@ -4,3 +4,8 @@ logger:
   default: info
   logs:
     custom_components.carelink: debug
+
+debugpy:
+   start: true
+   wait: false
+   port: 5678
