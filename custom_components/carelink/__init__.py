@@ -62,6 +62,7 @@ from .const import (
     BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE,
     BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE,
     MS_TIMEZONE_TO_IANA_MAP,
+    SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS,
 )
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
@@ -184,6 +185,10 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         )
         data[SENSOR_KEY_LASTSG_TREND] = recent_data.setdefault(
             "lastSGTrend", UNAVAILABLE
+        )
+
+        data[SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS] = recent_data.setdefault(
+            "timeToNextCalibHours", UNAVAILABLE
         )
 
         if "amount" in recent_data["activeInsulin"]:
