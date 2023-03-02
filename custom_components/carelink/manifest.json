@@ -1,14 +1,14 @@
 {
   "domain": "carelink",
   "name": "carelink",
+  "codeowners": ["@yo-han"],
   "config_flow": true,
+  "dependencies": [],
   "documentation": "https://www.home-assistant.io/integrations/carelink",
+  "homekit": {},
+  "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/yo-han/Home-Assistant-Carelink/issues",
   "requirements": [],
-  "zeroconf": [],
-  "homekit": {},
-  "dependencies": [],
-  "version": "2022.11.0",
-  "codeowners": ["@yo-han"],
-  "iot_class": "cloud_polling"
+  "version": "2023.2.3",
+  "zeroconf": []
 }
