@@ -62,6 +62,7 @@ from .const import (
     BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE,
     BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE,
     MS_TIMEZONE_TO_IANA_MAP,
+    SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS,
 )
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
@@ -140,9 +141,9 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
             last_sg = recent_data["lastSG"]
 
-            date_time_local = datetime.strptime(
-                last_sg["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ"
-            ).replace(tzinfo=None)
+            date_time_local = datetime.fromisoformat(last_sg["datetime"]).replace(
+                tzinfo=None
+            )
 
             # Update glucose data only if data was logged. Otherwise, keep the old data and
             # update the latest sensor state because it probably changed to an error state
@@ -186,6 +187,10 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             "lastSGTrend", UNAVAILABLE
         )
 
+        data[SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS] = recent_data.setdefault(
+            "timeToNextCalibHours", UNAVAILABLE
+        )
+
         if "amount" in recent_data["activeInsulin"]:
             # Active insulin sensor
 
@@ -196,8 +201,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             )
 
             if "datetime" in active_insulin:
-                date_time_local = datetime.strptime(
-                    active_insulin["datetime"], "%Y-%m-%dT%H:%M:%S.%fZ"
+                date_time_local = datetime.fromisoformat(
+                    active_insulin["datetime"]
                 ).replace(tzinfo=None)
                 data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {
                     "last_update": date_time_local.replace(tzinfo=timezone)
@@ -211,9 +216,9 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
             last_alarm = recent_data["lastAlarm"]
 
-            date_time_local = datetime.strptime(
-                last_alarm["datetime"], "%Y-%m-%dT%H:%M:%S.000-00:00"
-            ).replace(tzinfo=None)
+            date_time_local = datetime.fromisoformat(last_alarm["datetime"]).replace(
+                tzinfo=None
+            )
 
             data[SENSOR_KEY_LAST_ALARM] = date_time_local.replace(tzinfo=timezone)
             data[SENSOR_KEY_LAST_ALARM_ATTRS] = last_alarm
@@ -231,9 +236,11 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         else:
             data[SENSOR_KEY_ACTIVE_BASAL_PATTERN] = UNAVAILABLE
 
-        data[SENSOR_KEY_AVG_GLUCOSE_MMOL] = float(
-            round(recent_data.setdefault("averageSG", UNAVAILABLE) * 0.0555, 2)
-        )
+        averageSGRaw = recent_data.setdefault("averageSG", UNAVAILABLE)
+        if averageSGRaw is not None:
+            data[SENSOR_KEY_AVG_GLUCOSE_MMOL] = float(
+                round(recent_data.setdefault("averageSG", UNAVAILABLE) * 0.0555, 2)
+            )
         data[SENSOR_KEY_AVG_GLUCOSE_MGDL] = recent_data.setdefault(
             "averageSG", UNAVAILABLE
         )
@@ -355,7 +362,7 @@ def get_last_marker(marker_type: str, markers: list) -> dict:
     filtered_array = [marker for marker in markers if marker["type"] == marker_type]
     sorted_array = sorted(
         filtered_array,
-        key=lambda x: datetime.strptime(x["dateTime"], "%Y-%m-%dT%H:%M:%S.000-00:00"),
+        key=lambda x: datetime.fromisoformat(x["dateTime"]),
         reverse=True,
     )
 
@@ -364,9 +371,9 @@ def get_last_marker(marker_type: str, markers: list) -> dict:
         map(last_marker.pop, ["version", "kind", "index"])
 
         return {
-            "DATETIME": datetime.strptime(
-                last_marker["dateTime"], "%Y-%m-%dT%H:%M:%S.000-00:00"
-            ).replace(tzinfo=None),
+            "DATETIME": datetime.fromisoformat(last_marker["dateTime"]).replace(
+                tzinfo=None
+            ),
             "ATTRS": last_marker,
         }
     except IndexError:

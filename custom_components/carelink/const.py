@@ -59,6 +59,8 @@ SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS = (
     "last_marker_low_glucose_suspend_attributes"
 )
 
+SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS = "time_to_next_calib_hours"
+
 BINARY_SENSOR_KEY_PUMP_COMM_STATE = "binary_sensor_pump_comm_state"
 BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
 BINARY_SENSOR_KEY_CONDUIT_IN_RANGE = "binary_sensor_conduit_in_range"
@@ -145,6 +147,15 @@ SENSORS = (
     SensorEntityDescription(
         key=SENSOR_KEY_SENSOR_DURATION_HOURS,
         name="Sensor duration hours",
+        native_unit_of_measurement=DURATION_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=None,
+        icon="mdi:clock",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS,
+        name="Sensor time to next calibration hours",
         native_unit_of_measurement=DURATION_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
         device_class=None,
