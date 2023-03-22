@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -70,6 +71,12 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=60)
+
+
+def convert_date_to_isodate(date):
+    date_iso = re.sub("\.\d{3}Z$", "+00:00", date)
+
+    return datetime.fromisoformat(date_iso).replace(tzinfo=None)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -141,9 +148,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
             last_sg = recent_data["lastSG"]
 
-            date_time_local = datetime.fromisoformat(last_sg["datetime"]).replace(
-                tzinfo=None
-            )
+            date_time_local = convert_date_to_isodate(last_sg["datetime"])
 
             # Update glucose data only if data was logged. Otherwise, keep the old data and
             # update the latest sensor state because it probably changed to an error state
@@ -201,9 +206,9 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             )
 
             if "datetime" in active_insulin:
-                date_time_local = datetime.fromisoformat(
-                    active_insulin["datetime"]
-                ).replace(tzinfo=None)
+
+                date_time_local = convert_date_to_isodate(active_insulin["datetime"])
+
                 data[SENSOR_KEY_ACTIVE_INSULIN_ATTRS] = {
                     "last_update": date_time_local.replace(tzinfo=timezone)
                 }
@@ -216,9 +221,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
             last_alarm = recent_data["lastAlarm"]
 
-            date_time_local = datetime.fromisoformat(last_alarm["datetime"]).replace(
-                tzinfo=None
-            )
+            date_time_local = convert_date_to_isodate(last_alarm["datetime"])
 
             data[SENSOR_KEY_LAST_ALARM] = date_time_local.replace(tzinfo=timezone)
             data[SENSOR_KEY_LAST_ALARM_ATTRS] = last_alarm
@@ -362,7 +365,7 @@ def get_last_marker(marker_type: str, markers: list) -> dict:
     filtered_array = [marker for marker in markers if marker["type"] == marker_type]
     sorted_array = sorted(
         filtered_array,
-        key=lambda x: datetime.fromisoformat(x["dateTime"]),
+        key=lambda x: convert_date_to_isodate(x["dateTime"]),
         reverse=True,
     )
 
@@ -371,9 +374,7 @@ def get_last_marker(marker_type: str, markers: list) -> dict:
         map(last_marker.pop, ["version", "kind", "index"])
 
         return {
-            "DATETIME": datetime.fromisoformat(last_marker["dateTime"]).replace(
-                tzinfo=None
-            ),
+            "DATETIME": convert_date_to_isodate(last_marker["dateTime"]),
             "ATTRS": last_marker,
         }
     except IndexError:
