@@ -571,6 +571,7 @@ MS_TIMEZONE_TO_IANA_MAP = {
     "Saratov Standard Time": "Europe/Saratov",
     "Volgograd Standard Time": "Europe/Volgograd",
     "Central European Standard Time": "Europe/Warsaw",
+    "Central European Summer Time": "Europe/Amsterdam",
     "Mauritius Standard Time": "Indian/Mauritius",
     "Samoa Standard Time": "Pacific/Apia",
     "New Zealand Standard Time": "Pacific/Auckland",
