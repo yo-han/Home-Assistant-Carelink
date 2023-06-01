@@ -127,12 +127,16 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         data = {}
         last_sg = {}
+        clientTimezone = "Europe/London"
 
         await self.client.login()
         recent_data = await self.client.get_recent_data()
 
+        if "clientTimeZoneName" in recent_data:
+            clientTimezone = recent_data["clientTimeZoneName"]
+
         timezone_map = MS_TIMEZONE_TO_IANA_MAP.setdefault(
-            recent_data.setdefault("clientTimeZoneName"), "Europe/London"
+            clientTimezone, "Europe/London"
         )
         timezone = ZoneInfo(timezone_map)
 
