@@ -21,6 +21,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required("username"): str,
         vol.Required("password"): str,
         vol.Required("country"): str,
+        vol.Optional("patientId"): str,
     }
 )
 
@@ -30,7 +31,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    client = CarelinkClient(data["username"], data["password"], data["country"])
+    client = CarelinkClient(
+        data["username"], data["password"], data["country"], data["patientId"]
+    )
 
     if not await client.login():
         raise InvalidAuth
