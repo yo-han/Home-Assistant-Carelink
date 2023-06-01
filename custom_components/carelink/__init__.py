@@ -62,6 +62,13 @@ from .const import (
     BINARY_SENSOR_KEY_CONDUIT_IN_RANGE,
     BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE,
     BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE,
+    SENSOR_KEY_CLIENT_TIMEZONE,
+    SENSOR_KEY_APP_MODEL_TYPE,
+    SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER,
+    SENSOR_KEY_MEDICAL_DEVICE_MODEL_NUMBER,
+    SENSOR_KEY_MEDICAL_DEVICE_HARDWARE_REVISION,
+    SENSOR_KEY_MEDICAL_DEVICE_FIRMWARE_REVISION,
+    SENSOR_KEY_MEDICAL_DEVICE_SYSTEM_ID,
     MS_TIMEZONE_TO_IANA_MAP,
     SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS,
 )
@@ -142,6 +149,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         if "clientTimeZoneName" in recent_data:
             clientTimezone = recent_data["clientTimeZoneName"]
+
+        data[SENSOR_KEY_CLIENT_TIMEZONE] = clientTimezone
 
         timezone_map = MS_TIMEZONE_TO_IANA_MAP.setdefault(
             clientTimezone, "Europe/London"
@@ -366,6 +375,29 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             + recent_data.setdefault("lastName", "Unvailable")
         )
         data[DEVICE_PUMP_MODEL] = recent_data.setdefault("pumpModelNumber", UNAVAILABLE)
+
+        data[SENSOR_KEY_APP_MODEL_TYPE] = recent_data.setdefault(
+            "appModelType", UNAVAILABLE
+        )
+
+        data[SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER] = recent_data[
+            "medicalDeviceInformation"
+        ].setdefault("manufacturer", UNAVAILABLE)
+
+        data[SENSOR_KEY_MEDICAL_DEVICE_MODEL_NUMBER] = recent_data[
+            "medicalDeviceInformation"
+        ].setdefault("modelNumber", UNAVAILABLE)
+
+        data[SENSOR_KEY_MEDICAL_DEVICE_HARDWARE_REVISION] = recent_data[
+            "medicalDeviceInformation"
+        ].setdefault("hardwareRevision", UNAVAILABLE)
+
+        data[SENSOR_KEY_MEDICAL_DEVICE_FIRMWARE_REVISION] = recent_data[
+            "medicalDeviceInformation"
+        ].setdefault("firmwareRevision", UNAVAILABLE)
+        data[SENSOR_KEY_MEDICAL_DEVICE_SYSTEM_ID] = recent_data[
+            "medicalDeviceInformation"
+        ].setdefault("systemId", UNAVAILABLE)
 
         _LOGGER.debug("_async_update_data: %s", data)
 

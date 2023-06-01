@@ -61,6 +61,14 @@ SENSOR_KEY_LAST_LOW_GLUCOSE_SUSPENDED_MARKER_ATTRS = (
 
 SENSOR_KEY_TIME_TO_NEXT_CALIB_HOURS = "time_to_next_calib_hours"
 
+SENSOR_KEY_CLIENT_TIMEZONE = "client_timezone"
+SENSOR_KEY_APP_MODEL_TYPE = "app_model_type"
+SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER = "medical_device_manufacturer"
+SENSOR_KEY_MEDICAL_DEVICE_MODEL_NUMBER = "medical_device_model_number"
+SENSOR_KEY_MEDICAL_DEVICE_HARDWARE_REVISION = "medical_device_hardware_revision"
+SENSOR_KEY_MEDICAL_DEVICE_FIRMWARE_REVISION = "medical_device_firmware_revision"
+SENSOR_KEY_MEDICAL_DEVICE_SYSTEM_ID = "medical_device_system_id"
+
 BINARY_SENSOR_KEY_PUMP_COMM_STATE = "binary_sensor_pump_comm_state"
 BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
 BINARY_SENSOR_KEY_CONDUIT_IN_RANGE = "binary_sensor_conduit_in_range"
@@ -332,6 +340,69 @@ SENSORS = (
         device_class=SensorDeviceClass.TIMESTAMP,
         icon="mdi:calendar-alert",
         entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_CLIENT_TIMEZONE,
+        name="Timezone",
+        device_class=None,
+        native_unit_of_measurement=None,
+        state_class=None,
+        icon="mdi:calendar-clock",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_APP_MODEL_TYPE,
+        name="App model type",
+        device_class=None,
+        native_unit_of_measurement=None,
+        state_class=None,
+        icon="mdi:application",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER,
+        name="Manufacturer",
+        device_class=None,
+        native_unit_of_measurement=None,
+        state_class=None,
+        icon="mdi:factory",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_MEDICAL_DEVICE_MODEL_NUMBER,
+        name="Model number",
+        device_class=None,
+        native_unit_of_measurement=None,
+        state_class=None,
+        icon="mdi:code-tags",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_MEDICAL_DEVICE_HARDWARE_REVISION,
+        name="Hardware revision",
+        device_class=None,
+        native_unit_of_measurement=None,
+        state_class=None,
+        icon="mdi:code-tags",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_MEDICAL_DEVICE_FIRMWARE_REVISION,
+        name="Firmware revision",
+        device_class=None,
+        native_unit_of_measurement=None,
+        state_class=None,
+        icon="mdi:code-tags",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_MEDICAL_DEVICE_SYSTEM_ID,
+        name="System id",
+        device_class=None,
+        native_unit_of_measurement=None,
+        state_class=None,
+        icon="mdi:code-tags",
+        entity_category=EntityCategory.CONFIG,
     ),
 )
 
