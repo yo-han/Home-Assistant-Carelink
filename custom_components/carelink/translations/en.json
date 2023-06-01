@@ -13,7 +13,8 @@
                 "data": {
                     "country": "Country",
                     "password": "Password",
-                    "username": "Username"
+                    "username": "Username",
+                    "patientId": "Patient ID"
                 }
             }
         }

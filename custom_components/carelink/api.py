@@ -63,12 +63,19 @@ def printdbg(msg):
 class CarelinkClient:
     """Carelink Client library"""
 
-    def __init__(self, carelink_username, carelink_password, carelink_country):
+    def __init__(
+        self,
+        carelink_username,
+        carelink_password,
+        carelink_country,
+        carelink_patient_id=None,
+    ):
 
         # User info
         self.__carelink_username = carelink_username
         self.__carelink_password = carelink_password
         self.__carelink_country = carelink_country.lower()
+        self.__carelink_patient_id = carelink_patient_id
 
         # Session info
         self.__session_user = None
@@ -343,11 +350,17 @@ class CarelinkClient:
 
     # Periodic data from CareLink Cloud
 
-    async def __get_connect_display_message(self, username, role, endpoint_url):
+    async def __get_connect_display_message(
+        self, username, role, endpoint_url, patient_id=None
+    ):
         printdbg("__get_connect_display_message()")
 
         # Build user json for request
         user_json = {"username": username, "role": role}
+
+        if patient_id:
+            user_json["patientId"] = patient_id
+
         request_body = json.dumps(user_json)
         recent_data = await self.__get_data(None, endpoint_url, None, request_body)
         if recent_data is not None:
@@ -472,6 +485,7 @@ class CarelinkClient:
                     self.__session_profile["username"],
                     role,
                     self.__session_country_settings["blePereodicDataEndpoint"],
+                    self.__carelink_patient_id,
                 )
             else:
                 return await self.__get_last24_hours()
@@ -510,6 +524,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-u", "--user", dest="carelink_user", help="Carelink Username")
     parser.add_argument("-p", "--pass", dest="carelink_pass", help="Carelink Password")
+    parser.add_argument(
+        "-i", "--patientId", dest="carelink_patient", help="Carelink Patient ID"
+    )
     parser.add_argument(
         "-c",
         "--country",
