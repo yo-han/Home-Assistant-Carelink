@@ -10,11 +10,13 @@
         },
         "step": {
             "user": {
+                "title": "Setup your Carelink account",
+                "description": "Provide your username and password. Please ensure that you enter the 2-letter ISO code corresponding to the country in which your account was registered. If you are logging in with a Carelink Care Partner account, please include the patient ID, which should be the username of the main Carelink account.",
                 "data": {
                     "country": "Country",
                     "password": "Password",
                     "username": "Username",
-                    "patientId": "Patient ID"
+                    "patientId": "Patient ID (Optional)"
                 }
             }
         }

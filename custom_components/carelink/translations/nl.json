@@ -1,0 +1,24 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Apparaat is al geconfigureerd"
+        },
+        "error": {
+            "cannot_connect": "Verbinding mislukt",
+            "invalid_auth": "Ongeldige gebruikersnaam en/of wachtwoord",
+            "unknown": "Onverwacht probleem"
+        },
+        "step": {
+            "user": {
+                "title": "Configureer uw Carelink Account",
+                "description": "Geef uw gebruikersnaam en wachtwoord op. Zorg ervoor dat u de 2-letterige ISO-code invoert die overeenkomt met het land waarin uw account is geregistreerd. Als u zich aanmeldt met een Carelink Care Partner-account, vermeld dan de patiënt-ID, dit moet de gebruikersnaam zijn van het primaire Carelink-account.",
+                "data": {
+                    "country": "Land",
+                    "password": "Wachtwoord",
+                    "username": "Gebruikersnaam",
+                    "patientId": "Patient ID (Optioneel)"
+                }
+            }
+        }
+    }
+}
