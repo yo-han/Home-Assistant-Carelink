@@ -31,8 +31,13 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
+
+    patient_id = None
+    if "patientId" in data:
+        patient_id = data["patientId"]
+
     client = CarelinkClient(
-        data["username"], data["password"], data["country"], data["patientId"]
+        data["username"], data["password"], data["country"], patient_id
     )
 
     if not await client.login():
