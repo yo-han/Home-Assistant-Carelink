@@ -406,14 +406,15 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
 def get_last_marker(marker_type: str, markers: list) -> dict:
     """Retrieve last marker from type in 24h marker list"""
-    filtered_array = [marker for marker in markers if marker["type"] == marker_type]
-    sorted_array = sorted(
-        filtered_array,
-        key=lambda x: convert_date_to_isodate(x["dateTime"]),
-        reverse=True,
-    )
 
     try:
+        filtered_array = [marker for marker in markers if marker["type"] == marker_type]
+        sorted_array = sorted(
+            filtered_array,
+            key=lambda x: convert_date_to_isodate(x["dateTime"]),
+            reverse=True,
+        )
+
         last_marker = sorted_array[0]
         map(last_marker.pop, ["version", "kind", "index"])
 
@@ -421,5 +422,16 @@ def get_last_marker(marker_type: str, markers: list) -> dict:
             "DATETIME": convert_date_to_isodate(last_marker["dateTime"]),
             "ATTRS": last_marker,
         }
-    except IndexError:
+    except (IndexError, KeyError) as index_error:
+        _LOGGER.debug(
+            "the marker with type '%s' could not be tracked correctly. Check if your Carelink data contains a key with the name %s, it seems to be missing.",
+            marker_type,
+            index_error,
+        )
+        return None
+    except Exception as error:
+        _LOGGER.error(
+            "the marker with type '%s' could not be tracked correctly. A unknown error happened while parsing the data.",
+            error,
+        )
         return None
