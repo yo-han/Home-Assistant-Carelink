@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.util.dt import DEFAULT_TIME_ZONE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -142,7 +143,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         data = {}
         last_sg = {}
-        clientTimezone = "Europe/London"
+        clientTimezone = DEFAULT_TIME_ZONE
 
         await self.client.login()
         recent_data = await self.client.get_recent_data()
@@ -153,9 +154,11 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         data[SENSOR_KEY_CLIENT_TIMEZONE] = clientTimezone
 
         timezone_map = MS_TIMEZONE_TO_IANA_MAP.setdefault(
-            clientTimezone, "Europe/London"
+            clientTimezone, DEFAULT_TIME_ZONE
         )
         timezone = ZoneInfo(timezone_map)
+
+        _LOGGER.debug("Using timezone %s", DEFAULT_TIME_ZONE)
 
         recent_data["lastSG"] = recent_data.setdefault("lastSG", {})
 
