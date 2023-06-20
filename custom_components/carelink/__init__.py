@@ -148,15 +148,25 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         await self.client.login()
         recent_data = await self.client.get_recent_data()
 
-        if "clientTimeZoneName" in recent_data:
-            clientTimezone = recent_data["clientTimeZoneName"]
+        try:
+            if "clientTimeZonseName" in recent_data:
+                clientTimezone = recent_data["clientTimeZoneName"]
 
-        data[SENSOR_KEY_CLIENT_TIMEZONE] = clientTimezone
+            data[SENSOR_KEY_CLIENT_TIMEZONE] = clientTimezone
 
-        timezone_map = MS_TIMEZONE_TO_IANA_MAP.setdefault(
-            clientTimezone, DEFAULT_TIME_ZONE
-        )
-        timezone = ZoneInfo(timezone_map)
+            timezone_map = MS_TIMEZONE_TO_IANA_MAP.setdefault(
+                clientTimezone, DEFAULT_TIME_ZONE
+            )
+
+            timezone = ZoneInfo(str(timezone_map))
+
+            _LOGGER.debug("Using timezone %s", DEFAULT_TIME_ZONE)
+
+        except Exception as error:
+            _LOGGER.error(
+                "Can not set timezone to %s. The error was: %s", timezone_map, error
+            )
+            timezone = ZoneInfo("Europe/London")
 
         _LOGGER.debug("Using timezone %s", DEFAULT_TIME_ZONE)
 
