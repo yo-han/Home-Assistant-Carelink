@@ -168,6 +168,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             )
             timezone = ZoneInfo("Europe/London")
 
+        _LOGGER.debug("Using timezone %s", DEFAULT_TIME_ZONE)
+
         recent_data["lastSG"] = recent_data.setdefault("lastSG", {})
 
         recent_data["activeInsulin"] = recent_data.setdefault("activeInsulin", {})
@@ -391,24 +393,28 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             "appModelType", UNAVAILABLE
         )
 
-        data[SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER] = recent_data[
-            "medicalDeviceInformation"
-        ].setdefault("manufacturer", UNAVAILABLE)
+        # Add device info when available
 
-        data[SENSOR_KEY_MEDICAL_DEVICE_MODEL_NUMBER] = recent_data[
-            "medicalDeviceInformation"
-        ].setdefault("modelNumber", UNAVAILABLE)
+        if "medicalDeviceInformation" in recent_data:
 
-        data[SENSOR_KEY_MEDICAL_DEVICE_HARDWARE_REVISION] = recent_data[
-            "medicalDeviceInformation"
-        ].setdefault("hardwareRevision", UNAVAILABLE)
+            data[SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER] = recent_data[
+                "medicalDeviceInformation"
+            ].setdefault("manufacturer", UNAVAILABLE)
 
-        data[SENSOR_KEY_MEDICAL_DEVICE_FIRMWARE_REVISION] = recent_data[
-            "medicalDeviceInformation"
-        ].setdefault("firmwareRevision", UNAVAILABLE)
-        data[SENSOR_KEY_MEDICAL_DEVICE_SYSTEM_ID] = recent_data[
-            "medicalDeviceInformation"
-        ].setdefault("systemId", UNAVAILABLE)
+            data[SENSOR_KEY_MEDICAL_DEVICE_MODEL_NUMBER] = recent_data[
+                "medicalDeviceInformation"
+            ].setdefault("modelNumber", UNAVAILABLE)
+
+            data[SENSOR_KEY_MEDICAL_DEVICE_HARDWARE_REVISION] = recent_data[
+                "medicalDeviceInformation"
+            ].setdefault("hardwareRevision", UNAVAILABLE)
+
+            data[SENSOR_KEY_MEDICAL_DEVICE_FIRMWARE_REVISION] = recent_data[
+                "medicalDeviceInformation"
+            ].setdefault("firmwareRevision", UNAVAILABLE)
+            data[SENSOR_KEY_MEDICAL_DEVICE_SYSTEM_ID] = recent_data[
+                "medicalDeviceInformation"
+            ].setdefault("systemId", UNAVAILABLE)
 
         _LOGGER.debug("_async_update_data: %s", data)
 
