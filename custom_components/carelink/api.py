@@ -188,7 +188,7 @@ class CarelinkClient:
         query_parameters = dict(
             parse_qsl(urlparse(str(login_session_response.url)).query)
         )
-        url = "https://mdtlogin.medtronic.com" + "/mmcl/auth/oauth/v2/authorize/login"
+        url = "https://mdtlogin-ocl.medtronic.com" + "/mmcl/auth/oauth/v2/authorize/login"
         payload = {"country": self.__carelink_country, "locale": CARELINK_LOCALE_EN}
         form = {
             "sessionID": query_parameters["sessionID"],
