@@ -31,7 +31,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 import time
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, urlparse, urlunparse
 
 import httpx
 
@@ -42,7 +42,6 @@ VERSION = "0.3"
 CARELINK_CONNECT_SERVER_EU = "carelink.minimed.eu"
 CARELINK_CONNECT_SERVER_US = "carelink.minimed.com"
 CARELINK_LANGUAGE_EN = "en"
-CARELINK_LOCALE_EN = "en"
 CARELINK_AUTH_TOKEN_COOKIE_NAME = "auth_tmp_token"
 CARELINK_TOKEN_VALIDTO_COOKIE_NAME = "c_token_valid_to"
 AUTH_EXPIRE_DEADLINE_MINUTES = 1
@@ -178,16 +177,18 @@ class CarelinkClient:
 
     async def __do_login(self, login_session_response):
         """Login at carelink using login_session_response and return response."""
+        url_parse_result = urlparse(str(login_session_response.url))
+        url = urlunparse((url_parse_result.scheme, url_parse_result.netloc, url_parse_result.path, None, None, None))
 
         query_parameters = dict(
-            parse_qsl(urlparse(str(login_session_response.url)).query)
+            parse_qsl(url_parse_result.query)
         )
-        url = "https://mdtlogin-ocl.medtronic.com" + "/mmcl/auth/oauth/v2/authorize/login"
-        payload = {"country": self.__carelink_country, "locale": CARELINK_LOCALE_EN}
+        
+        payload = {"country": query_parameters["countrycode"], "locale": query_parameters["locale"]}
         form = {
             "sessionID": query_parameters["sessionID"],
             "sessionData": query_parameters["sessionData"],
-            "locale": CARELINK_LOCALE_EN,
+            "locale": query_parameters["locale"],
             "action": "login",
             "username": self.__carelink_username,
             "password": self.__carelink_password,
