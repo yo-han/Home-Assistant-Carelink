@@ -143,19 +143,19 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         data = {}
         last_sg = {}
-        clientTimezone = DEFAULT_TIME_ZONE
+        client_timezone = DEFAULT_TIME_ZONE
 
         await self.client.login()
         recent_data = await self.client.get_recent_data()
 
         try:
-            if "clientTimeZonseName" in recent_data:
-                clientTimezone = recent_data["clientTimeZoneName"]
+            if recent_data is not None and "clientTimeZoneName" in recent_data:
+                client_timezone = recent_data["clientTimeZoneName"]
 
-            data[SENSOR_KEY_CLIENT_TIMEZONE] = clientTimezone
+            data[SENSOR_KEY_CLIENT_TIMEZONE] = client_timezone
 
             timezone_map = MS_TIMEZONE_TO_IANA_MAP.setdefault(
-                clientTimezone, DEFAULT_TIME_ZONE
+                client_timezone, DEFAULT_TIME_ZONE
             )
 
             timezone = ZoneInfo(str(timezone_map))
