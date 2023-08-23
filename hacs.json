@@ -2,5 +2,5 @@
   "name": "Carelink Integration",
   "hacs": "1.6.0",
   "render_readme": true,
-  "homeassistant": "2022.6.0"
+  "homeassistant": "2023.1.0"
 }
