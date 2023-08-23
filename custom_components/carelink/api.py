@@ -91,7 +91,14 @@ class CarelinkClient:
 
         self._async_client = None
         self._cookies = None
-        self.__common_headers = {}
+        self.__common_headers = {
+             # Common browser headers
+             "Accept-Language": "en;q=0.9, *;q=0.8",
+             "Connection": "keep-alive",
+             "sec-ch-ua":"\"Google Chrome\";v=\"115\", \" Not;A Brand\";v=\"99\", \"Chromium\";v=\"115\"",
+             "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+         }
 
 
     @property
