@@ -56,8 +56,7 @@ def printdbg(msg):
     _LOGGER.debug("Carelink API: %s", msg)
 
     if DEBUG:
-        print(msg)
-
+        print(msg)  
 
 class CarelinkClient:
     """Carelink Client library"""
@@ -199,7 +198,8 @@ class CarelinkClient:
             "action": "login",
             "username": self.__carelink_username,
             "password": self.__carelink_password,
-            "actionButton": "Log in",
+            "g-recaptcha-response": "abc",
+            "actionButton": "Log in"            
         }
         try:
             response = await self.post_async(
