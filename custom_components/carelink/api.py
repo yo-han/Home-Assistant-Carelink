@@ -31,6 +31,7 @@ from datetime import datetime, timedelta
 import json
 import logging
 import time
+import os
 import base64
 from urllib.parse import parse_qsl, urlparse, urlunparse
 
@@ -47,7 +48,9 @@ CARELINK_AUTH_TOKEN_COOKIE_NAME = "auth_tmp_token"
 CARELINK_TOKEN_VALIDTO_COOKIE_NAME = "c_token_valid_to"
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
 
-DEBUG = True
+CON_CONTEXT_COOKIE = "cookies.txt"
+
+DEBUG = False
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,7 +77,7 @@ class CarelinkClient:
         _LOGGER.debug("Carelink country: %s", self.__carelink_country)
         self.__carelink_auth_token = carelink_token
         self.__auth_token_validto = None
-        
+
         self.__carelink_patient_id = carelink_patient_id
 
         # Session info
@@ -343,14 +346,14 @@ class CarelinkClient:
             printdbg("Malformed initial token")
             return False
 
+        self.__auth_token_validto = datetime.utcfromtimestamp(token_validto).strftime('%a %b %d %H:%M:%S UTC %Y')
         # Check expiration time stamp
         tdiff = token_validto - time.time()
         if tdiff < 0:
             printdbg("Initial token has expired %ds ago" % abs(tdiff))
             return False
               # Save expiration time
-        self.__auth_token_validto = datetime.utcfromtimestamp(token_validto).strftime('%a %b %d %H:%M:%S UTC %Y')
-      
+
         printdbg("Initial token expires in %ds (%s)" % (tdiff,self.__auth_token_validto))
         return True
 
@@ -367,7 +370,7 @@ class CarelinkClient:
         headers["Accept"] = "application/json, text/plain, */*"
         headers["Authorization"] = "Bearer " + token
         try:
-            response = await self.fetch_async(url, headers = headers)
+            response = await self.post_async(url, headers = headers)
             self.__last_response_code = response.status_code
             if response.status_code == 200:
                 printdbg("Token successfully refreshed")
@@ -392,18 +395,35 @@ class CarelinkClient:
             if auth_token == None or auth_token_validto == None:
                 printdbg("No valid token")
                 return None
-            
         if (datetime.strptime(auth_token_validto, '%a %b %d %H:%M:%S UTC %Y') - datetime.utcnow()) < timedelta(seconds=AUTH_EXPIRE_DEADLINE_MINUTES*60):
             if await self.__refreshToken(auth_token):
                 self.__carelink_auth_token = self.async_client.cookies[CARELINK_AUTH_TOKEN_COOKIE_NAME]
                 self.__auth_token_validto = self.async_client.cookies[CARELINK_TOKEN_VALIDTO_COOKIE_NAME]
-                # TODO: save token to file to reuse at restart
+                printdbg("New Token created")
+                try:
+                    cookie=os.path.join(os.getcwd(), CON_CONTEXT_COOKIE)
+                    with open(cookie, "w") as file:
+                        file.write(self.__carelink_auth_token)
+                        printdbg("Saving new token to cookies.txt")
+                except:
+                    # Refresh failed, manual login needed
+                    printdbg("Failed to store refreshed token")
                 printdbg("New token is valid until " + self.__auth_token_validto)
             else:
-                # Refresh failed, manual login needed
-                printdbg("Manual login needed")
-                return None
-            
+                # inital token is old, but updated token in file exists
+                try:
+                    cookie=os.path.join(os.getcwd(), CON_CONTEXT_COOKIE)
+                    with open(cookie, "r") as file:
+                        self.__carelink_auth_token = file.read()
+                        printdbg("Read cookies.txt token")
+                        if not await self.__checkAuthorizationToken():
+                            printdbg("Manual login needed")
+                            return None
+                except:
+                    # Refresh failed, manual login needed
+                    printdbg("Manual login needed")
+                    return None
+
         # there can be only one
         return "Bearer " + self.__carelink_auth_token
 
@@ -438,8 +458,8 @@ class CarelinkClient:
     async def login(self):
         """perform login"""
         if not self.__logged_in:
-            if await self.__checkAuthorizationToken():
-                await self.__execute_login_procedure()
+            await self.__checkAuthorizationToken()
+            await self.__execute_login_procedure()
         return self.__logged_in
 
     def run_in_console(self):
@@ -455,6 +475,7 @@ class CarelinkClient:
                     return_exceptions=False,
                 )
             )
+
             print(f"data: {results[0]}")
 
 
