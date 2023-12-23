@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.const import Platform
 from homeassistant.util.dt import DEFAULT_TIME_ZONE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import (
@@ -99,10 +99,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         patientId = config["patientId"]
 
     carelink_client = CarelinkClient(
-        config[CONF_USERNAME],
-        config[CONF_PASSWORD],
         config["country"],
-        patientId,
+        config["token"],
+        patientId
     )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {CLIENT: carelink_client}
