@@ -48,7 +48,7 @@ CARELINK_AUTH_TOKEN_COOKIE_NAME = "auth_tmp_token"
 CARELINK_TOKEN_VALIDTO_COOKIE_NAME = "c_token_valid_to"
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
 
-CON_CONTEXT_COOKIE = "cookies.txt"
+CON_CONTEXT_COOKIE = "custom_components/carelink/cookies.txt"
 
 DEBUG = False
 
@@ -131,12 +131,6 @@ class CarelinkClient:
             if self.__carelink_country == "us"
             else CARELINK_CONNECT_SERVER_EU
         )
-
-    def __extract_response_data(self, response_body, begstr, endstr):
-        """Return a clean stripped response_body by using begstr and endstr."""
-        beg = response_body.find(begstr) + len(begstr)
-        end = response_body.find(endstr, beg)
-        return response_body[beg:end].strip('"')
 
     async def fetch_async(self, url, headers, params=None):
         """Perform an async get request."""
@@ -244,7 +238,6 @@ class CarelinkClient:
         )
 
     # Old last24hours webapp data
-
     async def __get_last24_hours(self):
         printdbg("__get_last24_hours")
         query_params = {
@@ -257,7 +250,6 @@ class CarelinkClient:
         )
 
     # Periodic data from CareLink Cloud
-
     async def __get_connect_display_message(
         self, username, role, endpoint_url, patient_id=None
     ):
@@ -406,7 +398,6 @@ class CarelinkClient:
                         file.write(self.__carelink_auth_token)
                         printdbg("Saving new token to cookies.txt")
                 except:
-                    # Refresh failed, manual login needed
                     printdbg("Failed to store refreshed token")
                 printdbg("New token is valid until " + self.__auth_token_validto)
             else:
