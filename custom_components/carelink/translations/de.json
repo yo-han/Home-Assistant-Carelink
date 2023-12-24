@@ -11,7 +11,7 @@
     "step": {
       "user": {
         "title": "Konfigurieren Sie Ihr Carelink-Konto",
-        "description": "Geben Sie Ihren Benutzernamen und Ihr Passwort ein. Stellen Sie sicher, dass Sie den 2-Buchstaben-ISO-Code eingeben, der dem Land entspricht, in dem Ihr Konto registriert ist. Wenn Sie sich mit einem Carelink Care Partner-Konto anmelden, geben Sie bitte die Patienten-ID an. Diese sollte der Benutzername des primären Carelink-Kontos sein.",
+        "description": "Geben Sie Ihren Session Token ein. Stellen Sie sicher, dass Sie den 2-Buchstaben-ISO-Code eingeben, der dem Land entspricht, in dem Ihr Konto registriert ist. Wenn Sie sich mit einem Carelink Care Partner-Konto anmelden, geben Sie bitte die Patienten-ID an. Diese sollte der Benutzername des primären Carelink-Kontos sein.",
         "data": {
           "token": "Session Token",
           "country": "Land",

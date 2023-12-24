@@ -1,24 +1,23 @@
 {
     "config": {
-    "abort": {
-    "already_configured": "L'appareil est déjà configuré"
-    },
-    "error": {
-    "cannot_connect": "Échec de la connexion",
-    "invalid_auth": "Nom d'utilisateur et/ou mot de passe invalide(s)",
-    "unknown": "Problème inattendu"
-    },
-    "step": {
-    "user": {
-    "title": "Configurez votre compte Carelink",
-    "description": "Veuillez entrer votre nom d'utilisateur et votre mot de passe. Assurez-vous d'entrer le code ISO à deux lettres correspondant au pays dans lequel votre compte est enregistré. Si vous vous connectez avec un compte Carelink Care Partner, veuillez indiquer l'ID du patient, qui doit être le nom d'utilisateur du compte Carelink principal.",
-    "data": {
-    "country": "Pays",
-    "password": "Mot de passe",
-    "username": "Nom d'utilisateur",
-    "patientId": "ID patient (facultatif)"
+        "abort": {
+            "already_configured": "L'appareil est déjà configuré"
+        },
+        "error": {
+            "cannot_connect": "Échec de la connexion",
+            "invalid_auth": "Nom d'utilisateur et/ou mot de passe invalide(s)",
+            "unknown": "Problème inattendu"
+        },
+        "step": {
+            "user": {
+                "title": "Configurez votre compte Carelink",
+                "description": "Veuillez entrer votre nom d'utilisateur et votre mot de passe. Assurez-vous d'entrer le code ISO à deux lettres correspondant au pays dans lequel votre compte est enregistré. Si vous vous connectez avec un compte Carelink Care Partner, veuillez indiquer l'ID du patient, qui doit être le nom d'utilisateur du compte Carelink principal.",
+                "data": {
+                    "country": "Pays",
+                    "token": "Session Token",
+                    "patientId": "ID patient (facultatif)"
+                }
+            }
+        }
     }
-    }
-    }
-    }
-    }
+}

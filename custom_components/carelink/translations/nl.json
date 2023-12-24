@@ -14,8 +14,7 @@
                 "description": "Geef uw gebruikersnaam en wachtwoord op. Zorg ervoor dat u de 2-letterige ISO-code invoert die overeenkomt met het land waarin uw account is geregistreerd. Als u zich aanmeldt met een Carelink Care Partner-account, vermeld dan de patiënt-ID, dit moet de gebruikersnaam zijn van het primaire Carelink-account.",
                 "data": {
                     "country": "Land",
-                    "password": "Wachtwoord",
-                    "username": "Gebruikersnaam",
+                    "token": "Session Token",
                     "patientId": "Patient ID (Optioneel)"
                 }
             }
