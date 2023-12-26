@@ -54,7 +54,7 @@ logger:
 
 ## Requirements
 
-- CareLink account (with MFA NOT ENABLED)
+- CareLink follower account (with MFA NOT ENABLED)
 - Guardian Connect CGM outside US: patient or care partner account
 - Guardian Connect CGM inside US: **not tested yet!** (possibly a care partner account)
 - 7xxG pump outside US: care partner account (same as for Medtronic CareLink Connect app)
