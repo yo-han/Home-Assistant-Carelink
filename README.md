@@ -26,9 +26,9 @@ Copy the `custom_components/carelink` to your `custom_components` folder. Reboot
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=carelink)
 
-### Integration Setup
+## Integration Setup
 
-## Session Token
+### Session Token
 In order to authenticate to the Carelink server, the Carelink client needs a valid access token. This can be obtained by manually logging into a Carelink follower account via Carelink web page. After successful login, the access token (plus country code) can be shown and copied using the Cookie Quick Manager Firefox plugin as follows:
 
 - With the Carelink web page still active, open Cookie Quick Manger from the extensions menu
@@ -36,7 +36,7 @@ In order to authenticate to the Carelink server, the Carelink client needs a val
 - Copy value of auth temp token and use it as Session token for initial setup of the Homeassistant Carelink integration 
 
 
-### Enable debug logging
+## Enable debug logging
 
 The [logger](https://www.home-assistant.io/integrations/logger/) integration lets you define the level of logging activities in Home Assistant. Turning on debug mode will show more information about unsupported devices in your logbook.
 
