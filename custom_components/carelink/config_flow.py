@@ -18,9 +18,8 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required("username"): str,
-        vol.Required("password"): str,
         vol.Required("country"): str,
+        vol.Required("token"): str,
         vol.Optional("patientId"): str,
     }
 )
@@ -37,7 +36,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         patient_id = data["patientId"]
 
     client = CarelinkClient(
-        data["username"], data["password"], data["country"], patient_id
+        data["country"], data["token"], patient_id
     )
 
     if not await client.login():
