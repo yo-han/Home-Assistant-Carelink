@@ -209,6 +209,20 @@ class CarelinkClient:
 
         return jsondata
 
+    def __selectPatient(self, patients):
+        patient = None
+        for p in patients:
+            if p["status"] == "ACTIVE":
+                patient = p
+                break
+        return patient
+
+    async def __getPatients(self):
+        printdbg("__getPatients()")
+        return await self.__get_data(
+            self.__carelink_server(), "patient/m2m/links/patients", None, None
+        )
+
     async def __get_my_user(self):
         printdbg("__get_my_user()")
         return await self.__get_data(
@@ -286,6 +300,14 @@ class CarelinkClient:
             self.__session_monitor_data = None
 
             # Get sessions infos if required
+            if not self.__carelink_patient_id:
+                sessionPatients = await self.__getPatients()
+                patient = self.__selectPatient(sessionPatients)
+                if patient:
+                    self.__carelink_patient_id = patient["username"]
+                    printdbg("Found patient %s %s (%s)" % (patient["firstName"],patient["lastName"],self.__carelink_patient_id))
+                else:
+                    raise Exception("No patient found.")
             if self.__session_user is None:
                 self.__session_user = await self.__get_my_user()
             if self.__session_profile is None:
@@ -338,13 +360,13 @@ class CarelinkClient:
             printdbg("Malformed initial token")
             return False
 
+        # Save expiration time
         self.__auth_token_validto = datetime.utcfromtimestamp(token_validto).strftime('%a %b %d %H:%M:%S UTC %Y')
         # Check expiration time stamp
         tdiff = token_validto - time.time()
         if tdiff < 0:
             printdbg("Initial token has expired %ds ago" % abs(tdiff))
             return False
-              # Save expiration time
 
         printdbg("Initial token expires in %ds (%s)" % (tdiff,self.__auth_token_validto))
         return True
@@ -394,9 +416,10 @@ class CarelinkClient:
                 printdbg("New Token created")
                 try:
                     cookie=os.path.join(os.getcwd(), CON_CONTEXT_COOKIE)
+                    printdbg(f"Cookiefile: {cookie}")
                     with open(cookie, "w") as file:
                         file.write(self.__carelink_auth_token)
-                        printdbg("Saving new token to cookies.txt")
+                        printdbg("Writing new token to cookies.txt")
                 except:
                     printdbg("Failed to store refreshed token")
                 printdbg("New token is valid until " + self.__auth_token_validto)
