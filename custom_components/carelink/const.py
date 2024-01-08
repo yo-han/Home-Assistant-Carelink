@@ -348,7 +348,7 @@ SENSORS = (
         native_unit_of_measurement=None,
         state_class=None,
         icon="mdi:calendar-clock",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_APP_MODEL_TYPE,
@@ -357,7 +357,7 @@ SENSORS = (
         native_unit_of_measurement=None,
         state_class=None,
         icon="mdi:application",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER,
@@ -366,7 +366,7 @@ SENSORS = (
         native_unit_of_measurement=None,
         state_class=None,
         icon="mdi:factory",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_MEDICAL_DEVICE_MODEL_NUMBER,
@@ -375,7 +375,7 @@ SENSORS = (
         native_unit_of_measurement=None,
         state_class=None,
         icon="mdi:code-tags",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_MEDICAL_DEVICE_HARDWARE_REVISION,
@@ -384,7 +384,7 @@ SENSORS = (
         native_unit_of_measurement=None,
         state_class=None,
         icon="mdi:code-tags",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_MEDICAL_DEVICE_FIRMWARE_REVISION,
@@ -393,7 +393,7 @@ SENSORS = (
         native_unit_of_measurement=None,
         state_class=None,
         icon="mdi:code-tags",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=None,
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_MEDICAL_DEVICE_SYSTEM_ID,
@@ -402,7 +402,7 @@ SENSORS = (
         native_unit_of_measurement=None,
         state_class=None,
         icon="mdi:code-tags",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=None,
     ),
 )
 
