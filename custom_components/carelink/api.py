@@ -211,10 +211,11 @@ class CarelinkClient:
 
     def __selectPatient(self, patients):
         patient = None
-        for p in patients:
-            if p["status"] == "ACTIVE":
-                patient = p
-                break
+        if patients is not None:
+            for p in patients:
+                if p["status"] == "ACTIVE":
+                    patient = p
+                    break
         return patient
 
     async def __getPatients(self):
@@ -307,7 +308,7 @@ class CarelinkClient:
                     self.__carelink_patient_id = patient["username"]
                     printdbg("Found patient %s %s (%s)" % (patient["firstName"],patient["lastName"],self.__carelink_patient_id))
                 else:
-                    raise Exception("No patient found.")
+                    printdbg("No patient found.")
             if self.__session_user is None:
                 self.__session_user = await self.__get_my_user()
             if self.__session_profile is None:
@@ -399,16 +400,13 @@ class CarelinkClient:
 
 
     async def __get_authorization_token(self):
-        try:
-            auth_token = self.async_client.cookies[CARELINK_AUTH_TOKEN_COOKIE_NAME]
-            auth_token_validto = self.async_client.cookies[CARELINK_TOKEN_VALIDTO_COOKIE_NAME]
-        except:
-            auth_token = self.__carelink_auth_token
-            auth_token_validto = self.__auth_token_validto
+        auth_token = self.__carelink_auth_token
+        auth_token_validto = self.__auth_token_validto
 
-            if auth_token == None or auth_token_validto == None:
-                printdbg("No valid token")
-                return None
+        if auth_token == None or auth_token_validto == None:
+            printdbg("No valid token")
+            return None
+
         if (datetime.strptime(auth_token_validto, '%a %b %d %H:%M:%S UTC %Y') - datetime.utcnow()) < timedelta(seconds=AUTH_EXPIRE_DEADLINE_MINUTES*60):
             if await self.__refreshToken(auth_token):
                 self.__carelink_auth_token = self.async_client.cookies[CARELINK_AUTH_TOKEN_COOKIE_NAME]
