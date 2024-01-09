@@ -146,7 +146,8 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         await self.client.login()
         recent_data = await self.client.get_recent_data()
-
+        if recent_data is None:
+            recent_data = dict()
         try:
             if recent_data is not None and "clientTimeZoneName" in recent_data:
                 client_timezone = recent_data["clientTimeZoneName"]
