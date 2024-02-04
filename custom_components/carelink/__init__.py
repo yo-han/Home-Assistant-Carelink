@@ -15,9 +15,11 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .api import CarelinkClient
+from .nightscout_uploader import NightscoutUploader
 
 from .const import (
     CLIENT,
+    UPLOADER,
     DOMAIN,
     COORDINATOR,
     UNAVAILABLE,
@@ -31,8 +33,10 @@ from .const import (
     SENSOR_KEY_SENSOR_DURATION_MINUTES,
     SENSOR_KEY_LASTSG_MGDL,
     SENSOR_KEY_LASTSG_MMOL,
+    SENSOR_KEY_UPDATE_TIMESTAMP,
     SENSOR_KEY_LASTSG_TIMESTAMP,
     SENSOR_KEY_LASTSG_TREND,
+    SENSOR_KEY_SG_DELTA,
     SENSOR_KEY_RESERVOIR_LEVEL,
     SENSOR_KEY_RESERVOIR_AMOUNT,
     SENSOR_KEY_RESERVOIR_REMAINING_UNITS,
@@ -106,6 +110,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {CLIENT: carelink_client}
 
+    if "nightscout_url" in config and "nightscout_api" in config:
+        nightscout_uploader = NightscoutUploader(
+            config["nightscout_url"],
+            config["nightscout_api"]
+        )
+        hass.data.setdefault(DOMAIN, {})[entry.entry_id].update({UPLOADER: nightscout_uploader})
+
     coordinator = CarelinkCoordinator(hass, entry, update_interval=SCAN_INTERVAL)
 
     await coordinator.async_config_entry_first_refresh()
@@ -135,8 +146,12 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
 
+        self.uploader = None
         self.client = hass.data[DOMAIN][entry.entry_id][CLIENT]
         self.timezone = hass.config.time_zone
+
+        if UPLOADER in hass.data[DOMAIN][entry.entry_id]:
+            self.uploader = hass.data[DOMAIN][entry.entry_id][UPLOADER]
 
     async def _async_update_data(self):
 
@@ -148,6 +163,9 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         recent_data = await self.client.get_recent_data()
         if recent_data is None:
             recent_data = dict()
+        else:
+            if self.uploader:
+                await self.uploader.send_recent_data(recent_data)
         try:
             if recent_data is not None and "clientTimeZoneName" in recent_data:
                 client_timezone = recent_data["clientTimeZoneName"]
@@ -170,31 +188,31 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         _LOGGER.debug("Using timezone %s", DEFAULT_TIME_ZONE)
 
-        recent_data["lastSG"] = recent_data.setdefault("lastSG", {})
-
+        recent_data["sLastSensorTime"] = recent_data.setdefault("sLastSensorTime", "")
         recent_data["activeInsulin"] = recent_data.setdefault("activeInsulin", {})
         recent_data["basal"] = recent_data.setdefault("basal", {})
         recent_data["lastAlarm"] = recent_data.setdefault("lastAlarm", {})
         recent_data["markers"] = recent_data.setdefault("markers", [])
+        recent_data["sgs"] = recent_data.setdefault("sgs", [])
 
-        if "datetime" in recent_data["lastSG"]:
-            # Last Glucose level sensors
+        # Last Update fetch
 
-            last_sg = recent_data["lastSG"]
+        if recent_data["sLastSensorTime"]:
+            date_time_local = convert_date_to_isodate(recent_data["sLastSensorTime"])
+            data[SENSOR_KEY_UPDATE_TIMESTAMP] = date_time_local.replace(tzinfo=timezone)
 
-            date_time_local = convert_date_to_isodate(last_sg["datetime"])
+        # Last Glucose level sensors
 
-            # Update glucose data only if data was logged. Otherwise, keep the old data and
-            # update the latest sensor state because it probably changed to an error state
-            if last_sg["sg"] > 0:
-                data[SENSOR_KEY_LASTSG_MMOL] = float(round(last_sg["sg"] * 0.0555, 2))
-                data[SENSOR_KEY_LASTSG_MGDL] = last_sg["sg"]
+        current_sg = get_sg(recent_data["sgs"], 0)
+        prev_sg = get_sg(recent_data["sgs"], 1)
 
+        if current_sg:
+            date_time_local = convert_date_to_isodate(current_sg["datetime"])
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = date_time_local.replace(tzinfo=timezone)
-        else:
-            data[SENSOR_KEY_LASTSG_MMOL] = UNAVAILABLE
-            data[SENSOR_KEY_LASTSG_MGDL] = UNAVAILABLE
-            data[SENSOR_KEY_LASTSG_TIMESTAMP] = UNAVAILABLE
+            data[SENSOR_KEY_LASTSG_MMOL] = float(round(current_sg["sg"] * 0.555, 2))
+            data[SENSOR_KEY_LASTSG_MGDL] = current_sg["sg"]
+            if prev_sg:
+                data[SENSOR_KEY_SG_DELTA] = (float(current_sg["sg"]) - float(prev_sg["sg"]))
 
         # Sensors
 
@@ -420,6 +438,27 @@ class CarelinkCoordinator(DataUpdateCoordinator):
 
         return data
 
+def get_sg(sgs: list, pos: int) -> dict:
+    """Retrieve previous sg from list"""
+
+    try:
+        array = [sg for sg in sgs if "sensorState" in sg.keys() and sg["sensorState"] == "NO_ERROR_MESSAGE"]
+        sorted_array = sorted(
+            array,
+            key=lambda x: convert_date_to_isodate(x["datetime"]),
+            reverse=True,
+        )
+
+        if len(sorted_array) > pos:
+            return sorted_array[pos]
+        else:
+            return None
+    except Exception as error:
+        _LOGGER.error(
+            "the sg data could not be tracked correctly. A unknown error happened while parsing the data.",
+            error,
+        )
+        return None
 
 def get_last_marker(marker_type: str, markers: list) -> dict:
     """Retrieve last marker from type in 24h marker list"""

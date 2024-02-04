@@ -17,11 +17,14 @@ UNAVAILABLE = None
 DOMAIN = "carelink"
 CLIENT = "carelink_client"
 COORDINATOR = "coordinator"
+UPLOADER = "nightscout_uploader"
 
 SENSOR_KEY_LASTSG_MMOL = "last_sg_mmol"
 SENSOR_KEY_LASTSG_MGDL = "last_sg_mgdl"
+SENSOR_KEY_UPDATE_TIMESTAMP = "last_update_timestamp"
 SENSOR_KEY_LASTSG_TIMESTAMP = "last_sg_timestamp"
 SENSOR_KEY_LASTSG_TREND = "last_sg_trend"
+SENSOR_KEY_SG_DELTA = "last_sg_delta"
 SENSOR_KEY_PUMP_BATTERY_LEVEL = "pump_battery_level"
 SENSOR_KEY_SENSOR_BATTERY_LEVEL = "sensor_battery_level"
 SENSOR_KEY_CONDUIT_BATTERY_LEVEL = "conduit_battery_status"
@@ -109,7 +112,16 @@ SENSORS = (
     ),
     SensorEntityDescription(
         key=SENSOR_KEY_LASTSG_TIMESTAMP,
-        name="Last sensor update",
+        name="Last glucose update",
+        native_unit_of_measurement=None,
+        state_class=None,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        icon="mdi:clock",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_UPDATE_TIMESTAMP,
+        name="Last update",
         native_unit_of_measurement=None,
         state_class=None,
         device_class=SensorDeviceClass.TIMESTAMP,
@@ -123,6 +135,15 @@ SENSORS = (
         state_class=None,
         device_class=None,
         icon="mdi:chart-line",
+        entity_category=None,
+    ),
+    SensorEntityDescription(
+        key=SENSOR_KEY_SG_DELTA,
+        name="Last glucose delta",
+        native_unit_of_measurement=None,
+        state_class=SensorStateClass.MEASUREMENT,
+        device_class=None,
+        icon="mdi:plus-minus-variant",
         entity_category=None,
     ),
     SensorEntityDescription(
