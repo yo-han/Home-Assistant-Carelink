@@ -15,7 +15,9 @@
                 "data": {
                     "country": "Land",
                     "token": "Session Token",
-                    "patientId": "Patient ID (Optioneel)"
+                    "patientId": "Patient ID (Optioneel)",
+                    "nightscout_url": "Nightscout URL (Optioneel)",
+                    "nightscout_api": "Nightscout API Secret (Optioneel)"
                 }
             }
         }

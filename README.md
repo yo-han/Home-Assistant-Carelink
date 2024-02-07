@@ -1,6 +1,6 @@
 # Carelink Integration - Home Assistant
 
-Custom component for Home Assistant to interact the [Carelink platform by Medtronic](https://carelink.minimed.eu). The api is mostly the works of [@ondrej1024](https://github.com/ondrej1024) who made
+Custom component for Home Assistant to interact the [Carelink platform by Medtronic](https://carelink.minimed.eu) with integrated Nightscout uploader. The api is mostly the works of [@ondrej1024](https://github.com/ondrej1024) who made
 the [Python port](https://github.com/ondrej1024/carelink-python-client) from another JAVA api.
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
@@ -35,6 +35,21 @@ In order to authenticate to the Carelink server, the Carelink client needs a val
 - Select option "Search Cookies: carelink.minimed.eu"
 - Copy value of auth temp token and use it as Session token for initial setup of the Homeassistant Carelink integration 
 
+### Nightscout
+To use the Nightscout uploader, it is mandatory to provide the Nightscout URL and the Nightscout API secret.
+The Nightscout uploader can upload all SG data and add Treatments with the amount of carbs and insulin.
+In order to be able to show the active insulin reported by the pump, the remaining reservoir amount parameter of the nightscout pump plugin has been reused.
+![grafik](https://github.com/sedy89/Home-Assistant-Carelink/assets/65983953/2b0297b9-f33f-40ab-89e1-6cef69bf0445)
+
+#### Uploaded data
+- DeviceStatus
+- Glucose entries
+- Basal
+- Bolus
+- AutoBolus
+- Alarms
+- Alerts
+- Messages
 
 ## Enable debug logging
 

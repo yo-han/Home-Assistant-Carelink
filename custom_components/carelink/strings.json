@@ -8,7 +8,9 @@
         "data": {
           "country": "[%key:common::config_flow::data::country%]",
           "token": "[%key:common::config_flow::data::token%]",
-          "patientId": "[%key:common::config_flow::data::patientId%]"
+          "patientId": "[%key:common::config_flow::data::patientId%]",
+          "nightscout_url": "[%key:common::config_flow::data::nightscout_url%]",
+          "nightscout_api": "[%key:common::config_flow::data::nightscout_api%]"
         }
       }
     },

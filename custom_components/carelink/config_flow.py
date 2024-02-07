@@ -12,6 +12,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
 from .api import CarelinkClient
+from .nightscout_uploader import NightscoutUploader
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,6 +22,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required("country"): str,
         vol.Required("token"): str,
         vol.Optional("patientId"): str,
+        vol.Optional("nightscout_url"): str,
+        vol.Optional("nightscout_api"): str,
     }
 )
 
@@ -41,6 +44,20 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     if not await client.login():
         raise InvalidAuth
+
+    nightscout_url = None
+    nightscout_api = None
+    if "nightscout_url" in data:
+        nightscout_url = data["nightscout_url"]
+    if "nightscout_api" in data:
+        nightscout_api = data["nightscout_api"]
+
+    if nightscout_api and nightscout_url:
+        uploader = NightscoutUploader(
+            data["nightscout_url"], data["nightscout_api"]
+        )
+        if not await uploader.reachServer():
+            raise ConnectionError
 
     return {"title": "Carelink"}
 

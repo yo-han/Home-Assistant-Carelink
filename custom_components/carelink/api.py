@@ -27,13 +27,12 @@
 
 import argparse
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import logging
 import time
 import os
 import base64
-from urllib.parse import parse_qsl, urlparse, urlunparse
 
 import httpx
 
@@ -340,7 +339,7 @@ class CarelinkClient:
 
     async def __checkAuthorizationToken(self):
         if self.__carelink_auth_token == None:
-            printdbg("No initial token found")
+            printdbg("No token found")
             return False
         try:
             # Decode json web token payload
@@ -358,18 +357,18 @@ class CarelinkClient:
             token_validto = payload_json["exp"]
             token_validto -= 600
         except:
-            printdbg("Malformed initial token")
+            printdbg("Malformed token")
             return False
 
         # Save expiration time
-        self.__auth_token_validto = datetime.utcfromtimestamp(token_validto).strftime('%a %b %d %H:%M:%S UTC %Y')
+        self.__auth_token_validto = datetime.fromtimestamp(token_validto, tz=timezone.utc).strftime('%a %b %d %H:%M:%S UTC %Y')
         # Check expiration time stamp
         tdiff = token_validto - time.time()
         if tdiff < 0:
-            printdbg("Initial token has expired %ds ago" % abs(tdiff))
+            printdbg("Token has expired %ds ago" % abs(tdiff))
             return False
 
-        printdbg("Initial token expires in %ds (%s)" % (tdiff,self.__auth_token_validto))
+        printdbg("Token expires in %ds (%s)" % (tdiff,self.__auth_token_validto))
         return True
 
     async def __refreshToken(self, token):
@@ -407,20 +406,20 @@ class CarelinkClient:
             printdbg("No valid token")
             return None
 
-        if (datetime.strptime(auth_token_validto, '%a %b %d %H:%M:%S UTC %Y') - datetime.utcnow()) < timedelta(seconds=AUTH_EXPIRE_DEADLINE_MINUTES*60):
+        if (datetime.strptime(auth_token_validto, '%a %b %d %H:%M:%S UTC %Y').replace(tzinfo=timezone.utc) - datetime.now(tz=timezone.utc)) < timedelta(seconds=AUTH_EXPIRE_DEADLINE_MINUTES*60):
+            printdbg("Token is valid until " + self.__auth_token_validto)
             if await self.__refreshToken(auth_token):
                 self.__carelink_auth_token = self.async_client.cookies[CARELINK_AUTH_TOKEN_COOKIE_NAME]
                 self.__auth_token_validto = self.async_client.cookies[CARELINK_TOKEN_VALIDTO_COOKIE_NAME]
-                printdbg("New Token created")
+                printdbg("New token is valid until " + self.__auth_token_validto)
                 try:
                     cookie=os.path.join(os.getcwd(), CON_CONTEXT_COOKIE)
                     printdbg(f"Cookiefile: {cookie}")
                     with open(cookie, "w") as file:
                         file.write(self.__carelink_auth_token)
-                        printdbg("Writing new token to cookies.txt")
+                        printdbg("Writing token to cookies.txt")
                 except:
-                    printdbg("Failed to store refreshed token")
-                printdbg("New token is valid until " + self.__auth_token_validto)
+                    printdbg("Failed to store token")
             else:
                 # inital token is old, but updated token in file exists
                 try:
@@ -477,19 +476,10 @@ class CarelinkClient:
     def run_in_console(self):
         """If running this module directly, print all the values in the console."""
         print("Reading...")
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.gather(self.login(), return_exceptions=False))
+        asyncio.run(self.login())
         if self.__logged_in:
-            loop = asyncio.get_event_loop()
-            results = loop.run_until_complete(
-                asyncio.gather(
-                    self.get_recent_data(),
-                    return_exceptions=False,
-                )
-            )
-
-            print(f"data: {results[0]}")
-
+            result = asyncio.run(self.get_recent_data())
+            print(f"data: {result}")
 
 if __name__ == "__main__":
 
