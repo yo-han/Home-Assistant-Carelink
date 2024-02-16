@@ -209,7 +209,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         if current_sg:
             date_time_local = convert_date_to_isodate(current_sg["datetime"])
             data[SENSOR_KEY_LASTSG_TIMESTAMP] = date_time_local.replace(tzinfo=timezone)
-            data[SENSOR_KEY_LASTSG_MMOL] = float(round(current_sg["sg"] * 0.555, 2))
+            data[SENSOR_KEY_LASTSG_MMOL] = float(round(current_sg["sg"] * 0.0555, 2))
             data[SENSOR_KEY_LASTSG_MGDL] = current_sg["sg"]
             if prev_sg:
                 data[SENSOR_KEY_SG_DELTA] = (float(current_sg["sg"]) - float(prev_sg["sg"]))
