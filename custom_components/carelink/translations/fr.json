@@ -11,10 +11,14 @@
         "step": {
             "user": {
                 "title": "Configurez votre compte Carelink",
-                "description": "Veuillez entrer votre nom d'utilisateur et votre mot de passe. Assurez-vous d'entrer le code ISO à deux lettres correspondant au pays dans lequel votre compte est enregistré. Si vous vous connectez avec un compte Carelink Care Partner, veuillez indiquer l'ID du patient, qui doit être le nom d'utilisateur du compte Carelink principal.",
+                "description": "Exécutez le script externe pour obtenir les informations de session. Ceux-ci peuvent être copiés sous forme de fichier dans le répertoire d'intégration Carelink, ou les valeurs des paramètres peuvent être saisies dans ce masque. Si vous vous connectez avec un compte Carelink Care Partner, veuillez fournir l'identifiant du patient. Il doit s'agir du nom d'utilisateur principal du compte Carelink. L'intervalle d'analyse détermine le nombre de secondes avant que les données ne soient à nouveau collectées.",
                 "data": {
-                    "country": "Pays",
-                    "token": "Session Token",
+                    "scan_interval": "Intervalle d'analyse en secondes (30-300)",
+                    "cl_token": "Access Token (facultatif)",
+                    "cl_refresh_token": "Refresh Token (facultatif)",
+                    "cl_client_id": "Client ID (facultatif)",
+                    "cl_client_secret": "Client Secret (facultatif)",
+                    "cl_mag_identifier": "Mag Identifier (facultatif)",
                     "patientId": "ID patient (facultatif)",
                     "nightscout_url": "Nightscout URL (facultatif)",
                     "nightscout_api": "Nightscout API Secret (facultatif)"

@@ -11,10 +11,14 @@
         "step": {
             "user": {
                 "title": "Configureer uw Carelink Account",
-                "description": "Geef uw gebruikersnaam en wachtwoord op. Zorg ervoor dat u de 2-letterige ISO-code invoert die overeenkomt met het land waarin uw account is geregistreerd. Als u zich aanmeldt met een Carelink Care Partner-account, vermeld dan de patiënt-ID, dit moet de gebruikersnaam zijn van het primaire Carelink-account.",
+                "description": "Voer het externe script uit om de sessie-informatie op te halen. Deze kunnen als bestand naar de Carelink Integration-directory worden gekopieerd, of de waarden van de parameters kunnen in dit masker worden ingevoerd. Als u inlogt met een Carelink Care Partner-account, geef dan uw patiënt-ID op. Dit moet de primaire gebruikersnaam van het Carelink-account zijn. Het Scaninterval bepaalt het aantal seconden voordat de gegevens opnieuw worden verzameld.",
                 "data": {
-                    "country": "Land",
-                    "token": "Session Token",
+                    "scan_interval": "Scaninterval in seconden (30-300)",
+                    "cl_token": "Access Token (Optioneel)",
+                    "cl_refresh_token": "Refresh Token (Optioneel)",
+                    "cl_client_id": "Client ID (Optioneel)",
+                    "cl_client_secret": "Client Secret (Optioneel)",
+                    "cl_mag_identifier": "Mag Identifier (Optioneel)",
                     "patientId": "Patient ID (Optioneel)",
                     "nightscout_url": "Nightscout URL (Optioneel)",
                     "nightscout_api": "Nightscout API Secret (Optioneel)"

@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 from datetime import datetime
-import pytz
 import hashlib
 import json
 import logging
@@ -109,7 +108,8 @@ class NightscoutUploader:
         return result
 
     def __getDataStringFromIso(self, time, tz):
-        dt = tz.localize(datetime.fromisoformat(time.replace(".000-00:00", "")))
+        dt = datetime.fromisoformat(time.replace(".000-00:00", ""))
+        dt = dt.astimezone(tz)
         timestamp = dt.timestamp()
         date = int(timestamp * 1000)
         date_string = dt.isoformat()
@@ -117,7 +117,7 @@ class NightscoutUploader:
 
     def __getDataString(self, time, tz):
         dt = datetime.strptime(time,"%Y-%m-%dT%H:%M:%S.%fZ")
-        dt = tz.localize(dt)
+        dt = dt.astimezone(tz)
         timestamp = dt.timestamp()
         date = int(timestamp * 1000)
         date_string = dt.isoformat()
@@ -388,10 +388,7 @@ class NightscoutUploader:
                 noise=1))
         return result
 
-    async def __slice_recent_data_for_transmission(self, recent_data):
-        # get timezone
-        local_tz = datetime.now().astimezone().tzname()
-        tz= pytz.timezone(local_tz)
+    async def __slice_recent_data_for_transmission(self, recent_data, tz):
         # Sending device status
         response = await self.__setDeviceStatus(recent_data)
         if response:
@@ -425,10 +422,10 @@ class NightscoutUploader:
 
     # Periodic upload to Nightscout
     async def send_recent_data(
-        self, recent_data
+        self, recent_data, timezone
     ):
         printdbg("__send_recent_data()")
-        await self.__slice_recent_data_for_transmission(recent_data)
+        await self.__slice_recent_data_for_transmission(recent_data, timezone)
 
     async def __test_server_connection(self):
         url = f"{self.__nightscout_url}/api/v1/devicestatus.json"

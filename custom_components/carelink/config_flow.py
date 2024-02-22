@@ -13,20 +13,23 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .api import CarelinkClient
 from .nightscout_uploader import NightscoutUploader
-from .const import DOMAIN
+from .const import DOMAIN, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required("country"): str,
-        vol.Required("token"): str,
+        vol.Optional("cl_token"): str,
+        vol.Optional("cl_refresh_token"): str,
+        vol.Optional("cl_client_id"): str,
+        vol.Optional("cl_client_secret"): str,
+        vol.Optional("cl_mag_identifier"): str,
         vol.Optional("patientId"): str,
         vol.Optional("nightscout_url"): str,
         vol.Optional("nightscout_api"): str,
+        vol.Required(SCAN_INTERVAL, default=60): vol.All(vol.Coerce(int), vol.Range(min=30, max=300)),
     }
 )
-
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
@@ -34,27 +37,23 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
 
-    patient_id = None
-    if "patientId" in data:
-        patient_id = data["patientId"]
-
     client = CarelinkClient(
-        data["country"], data["token"], patient_id
+        data.setdefault("cl_token", None),
+        data.setdefault("cl_refresh_token", None),
+        data.setdefault("cl_client_id", None),
+        data.setdefault("cl_client_secret", None),
+        data.setdefault("cl_mag_identifier", None),
+        data.setdefault("patientId", None)
     )
 
     if not await client.login():
         raise InvalidAuth
 
-    nightscout_url = None
-    nightscout_api = None
-    if "nightscout_url" in data:
-        nightscout_url = data["nightscout_url"]
-    if "nightscout_api" in data:
-        nightscout_api = data["nightscout_api"]
-
+    nightscout_url = data.setdefault("nightscout_url", None)
+    nightscout_api = data.setdefault("nightscout_api", None)
     if nightscout_api and nightscout_url:
         uploader = NightscoutUploader(
-            data["nightscout_url"], data["nightscout_api"]
+            nightscout_url, nightscout_api
         )
         if not await uploader.reachServer():
             raise ConnectionError

@@ -18,6 +18,7 @@ DOMAIN = "carelink"
 CLIENT = "carelink_client"
 COORDINATOR = "coordinator"
 UPLOADER = "nightscout_uploader"
+SCAN_INTERVAL = "scan_interval"
 
 SENSOR_KEY_LASTSG_MMOL = "last_sg_mmol"
 SENSOR_KEY_LASTSG_MGDL = "last_sg_mgdl"
