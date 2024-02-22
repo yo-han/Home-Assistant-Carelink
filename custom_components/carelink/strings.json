@@ -6,8 +6,12 @@
         "title": "Setup your Carelink account",
         "description": "Provide your session token. Please ensure that you enter the 2-letter ISO code corresponding to the country in which your account was registered. If you are logging in with a Carelink Care Partner account, please include the patient ID, which should be the username of the main Carelink account.",
         "data": {
-          "country": "[%key:common::config_flow::data::country%]",
-          "token": "[%key:common::config_flow::data::token%]",
+          "scan_interval": "[%key:common::config_flow::data::scan_interval%]",
+          "cl_token": "[%key:common::config_flow::data::cl_token%]",
+          "cl_refresh_token": "[%key:common::config_flow::data::cl_refresh_token%]",
+          "cl_client_id": "[%key:common::config_flow::data::cl_client_id%]",
+          "cl_client_secret": "[%key:common::config_flow::data::cl_client_secret%]",
+          "cl_mag_identifier": "[%key:common::config_flow::data::cl_mag_identifier%]",
           "patientId": "[%key:common::config_flow::data::patientId%]",
           "nightscout_url": "[%key:common::config_flow::data::nightscout_url%]",
           "nightscout_api": "[%key:common::config_flow::data::nightscout_api%]"

@@ -11,10 +11,14 @@
     "step": {
       "user": {
         "title": "Konfigurieren Sie Ihr Carelink-Konto",
-        "description": "Geben Sie Ihren Session Token ein. Stellen Sie sicher, dass Sie den 2-Buchstaben-ISO-Code eingeben, der dem Land entspricht, in dem Ihr Konto registriert ist. Wenn Sie sich mit einem Carelink Care Partner-Konto anmelden, geben Sie bitte die Patienten-ID an. Diese sollte der Benutzername des primären Carelink-Kontos sein.",
+        "description": "Führen Sie das externe Script aus, um die Session Informationen zu erhalten. Diese können als Datei in das Verzeichnis der Carelink Integration kopiert werden, oder die Werte der Parameter können in diese Maske eingegben werden. Wenn Sie sich mit einem Carelink Care Partner-Konto anmelden, geben Sie bitte die Patienten-ID an. Diese sollte der Benutzername des primären Carelink-Kontos sein. Der Scan Intervall bestimmt die Zeit in Sekunden bevor die Daten erneut gesammelt werden.",
         "data": {
-          "token": "Session Token",
-          "country": "Land",
+          "scan_interval": "Scan Intervall in Sekunden (30-300)",
+          "cl_token": "Access Token (optional)",
+          "cl_refresh_token": "Refresh Token (optional)",
+          "cl_client_id": "Client ID (optional)",
+          "cl_client_secret": "Client Secret (optional)",
+          "cl_mag_identifier": "Mag Identifier (optional)",
           "patientId": "Patienten-ID (optional)",
           "nightscout_url": "Nightscout URL (optional)",
           "nightscout_api": "Nightscout API Secret (optional)"

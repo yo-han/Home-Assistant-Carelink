@@ -30,24 +30,19 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import json
 import logging
-import time
 import os
 import base64
 
 import httpx
 
 # Version string
-VERSION = "0.3"
+VERSION = "0.4"
 
 # Constants
-CARELINK_CONNECT_SERVER_EU = "carelink.minimed.eu"
-CARELINK_CONNECT_SERVER_US = "carelink.minimed.com"
-CARELINK_LANGUAGE_EN = "en"
-CARELINK_AUTH_TOKEN_COOKIE_NAME = "auth_tmp_token"
-CARELINK_TOKEN_VALIDTO_COOKIE_NAME = "c_token_valid_to"
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
-
-CON_CONTEXT_COOKIE = "custom_components/carelink/cookies.txt"
+CON_CONTEXT_AUTH = "custom_components/carelink/logindata.json"
+CARELINK_CONFIG_URL = "https://clcloud.minimed.com/connect/carepartner/v6/discover/android/3.1"
+AUTH_ERROR_CODES = [401,403]
 
 DEBUG = False
 
@@ -66,70 +61,51 @@ class CarelinkClient:
 
     def __init__(
         self,
-        carelink_country,
+        carelink_refresh_token,
         carelink_token,
-        carelink_patient_id=None,
+        client_id,
+        client_secret,
+        mag_identifier,
+        carelink_patient_id
     ):
 
-        # User info
-        self.__carelink_country = carelink_country.lower()
-        _LOGGER.debug("Carelink country: %s", self.__carelink_country)
-        self.__carelink_auth_token = carelink_token
+        # Auth info
+        self.__carelink_refresh_token = carelink_refresh_token
+        self.__carelink_access_token = carelink_token
+        self.__client_id = client_id
+        self.__client_secret = client_secret
+        self.__mag_identifier = mag_identifier
+        self.__tokenData = None
+        self.__accessTokenPayload = None
+        # helper token data
         self.__auth_token_validto = None
 
-        self.__carelink_patient_id = carelink_patient_id
-
         # Session info
+        self.__carelink_patient_id = carelink_patient_id
         self.__session_user = None
-        self.__session_profile = None
-        self.__session_country_settings = None
-        self.__session_monitor_data = None
+        self.__session_username = None
+        self.__session_config = None
+        self.__session_country = None
 
         # State info
-        self.__logged_in = False
-        self.__last_data_success = False
+        self.__initialized = False
         self.__last_response_code = None
-        self.__last_error_message = None
 
         self._async_client = None
-        self._cookies = None
-        self.__common_headers = {
-             # Common browser headers
-             "Accept-Language": "en;q=0.9, *;q=0.8",
-             "Connection": "keep-alive",
-             "sec-ch-ua":"\"Google Chrome\";v=\"115\", \" Not;A Brand\";v=\"99\", \"Chromium\";v=\"115\"",
-             "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-         }
 
+        self.__common_headers = {
+                # Common browser headers
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 10; Nexus 5X Build/QQ3A.200805.001)",
+                }
 
     @property
     def async_client(self):
         """Return the httpx client."""
         if not self._async_client:
             self._async_client = httpx.AsyncClient()
-
         return self._async_client
-
-    def get_last_data_success(self):
-        """Return __last_data_success."""
-        return self.__last_data_success
-
-    def get_last_response_code(self):
-        """Return __last_response_code."""
-        return self.__last_response_code
-
-    def getlast_error_message(self):
-        """Return __last_error_message."""
-        return self.__last_error_message
-
-    def __carelink_server(self):
-        """Return carelink server domain by country."""
-        return (
-            CARELINK_CONNECT_SERVER_US
-            if self.__carelink_country == "us"
-            else CARELINK_CONNECT_SERVER_EU
-        )
 
     async def fetch_async(self, url, headers, params=None):
         """Perform an async get request."""
@@ -140,7 +116,6 @@ class CarelinkClient:
             follow_redirects=True,
             timeout=30,
         )
-
         return response
 
     async def post_async(self, url, headers, data=None, params=None):
@@ -153,27 +128,25 @@ class CarelinkClient:
             follow_redirects=True,
             timeout=30,
         )
-
         return response
 
-    async def __get_data(self, host, path, query_params, request_body):
+    async def __get_data(self, path, query_params, request_body):
         printdbg("__get_data()")
-        self.__last_data_success = False
-        if host is None:
-            url = path
+        if path is None:
+            url = self.__session_config["baseUrlCumulus"] + "/display/message"
         else:
-            url = "https://" + host + "/" + path
+            url = path
         payload = query_params
         data = request_body
         jsondata = None
 
         # Get auth token
-        auth_token = await self.__get_authorization_token()
-        if auth_token is not None:
+        if await self.__handle_authorization_token():
             try:
                 # Add header
                 headers = self.__common_headers
-                headers["Authorization"] = auth_token
+                headers["mag-identifier"] = self.__tokenData["mag-identifier"]
+                headers["Authorization"] = "Bearer " + self.__tokenData["access_token"]
                 if data is None:
                     headers["Accept"] = "application/json, text/plain, */*"
                     headers["Content-Type"] = "application/json; charset=utf-8"
@@ -194,7 +167,6 @@ class CarelinkClient:
                     response = await self.post_async(url, headers=headers, data=data)
                     self.__last_response_code = response.status_code
                     if not response.status_code == 200:
-                        printdbg(response.status_code)
                         raise ValueError(
                             "__get_data() session get response is not OK"
                             + str(response.status_code)
@@ -204,7 +176,6 @@ class CarelinkClient:
                 printdbg(f"__get_data() failed: exception {error}")
             else:
                 jsondata = json.loads(response.text)
-                self.__last_data_success = True
 
         return jsondata
 
@@ -219,53 +190,67 @@ class CarelinkClient:
 
     async def __getPatients(self):
         printdbg("__getPatients()")
+        url = self.__session_config["baseUrlCareLink"] + "/links/patients"
         return await self.__get_data(
-            self.__carelink_server(), "patient/m2m/links/patients", None, None
+            url, None, None
         )
 
     async def __get_my_user(self):
         printdbg("__get_my_user()")
-        return await self.__get_data(
-            self.__carelink_server(), "patient/users/me", None, None
-        )
+        url = self.__session_config["baseUrlCareLink"] + "/users/me"
+        resp = await self.__get_data(
+            url, None, None)
+        return resp
 
-    async def __get_my_profile(self):
-        printdbg("__get_my_profile()")
-        return await self.__get_data(
-            self.__carelink_server(), "patient/users/me/profile", None, None
-        )
+    async def __get_config_settings(self):
+        printdbg("__get_config_settings()")
+        try:
+            resp = await self.fetch_async(CARELINK_CONFIG_URL, self.__common_headers)
+            self.__last_response_code = resp.status_code
+            if not resp.status_code == 200:
+                raise ValueError(
+                    "__get_config_settings() CARELINK_CONFIG_URL session get response is not OK"
+                    + str(resp.status_code)
+                )
+            data = resp.json()
+            region = None
+            config = None
 
-    async def __get_country_settings(self, country, language):
-        printdbg("__get_country_settings()")
-        query_params = {"countryCode": country, "language": language}
-        return await self.__get_data(
-            self.__carelink_server(), "patient/countries/settings", query_params, None
-        )
+            for c in data["supportedCountries"]:
+                try:
+                    region = c[self.__session_country.upper()]["region"]
+                    break
+                except KeyError:
+                    pass
+            if region is None:
+                raise Exception("ERROR: country code %s is not supported" % self.__session_country)
+            printdbg("User region: %s" % region)
 
-    async def __get_monitor_data(self):
-        printdbg("__get_monitor_data()")
-        return await self.__get_data(
-            self.__carelink_server(),
-            "patient/monitor/data",
-            None,
-            None,
-        )
+            for c in data["CP"]:
+                if c["region"] == region:
+                    config = c
+                    break
+            if config is None:
+                raise Exception(f"ERROR: failed to get config base urls for region {region}")
 
-    # Old last24hours webapp data
-    async def __get_last24_hours(self):
-        printdbg("__get_last24_hours")
-        query_params = {
-            "cpSerialNumber": "NONE",
-            "msgType": "last24hours",
-            "requestTime": str(int(time.time() * 1000)),
-        }
-        return await self.__get_data(
-            self.__carelink_server(), "patient/connect/data", query_params, None
-        )
+            resp = await self.fetch_async(config["SSOConfiguration"], self.__common_headers)
+            self.__last_response_code = resp.status_code
+            if not resp.status_code == 200:
+                raise ValueError(
+                    "__get_config_settings() SSOConfiguration session GET response is not OK"
+                    + str(resp.status_code)
+                )
+            sso_config = resp.json()
+            sso_base_url = f"https://{sso_config['server']['hostname']}:{sso_config['server']['port']}/{sso_config['server']['prefix']}"
+            token_url = sso_base_url + sso_config["oauth"]["system_endpoints"]["token_endpoint_path"]
+            config["token_url"] = token_url
+        except Exception as e:
+            printdbg(e)
+        return config
 
     # Periodic data from CareLink Cloud
     async def __get_connect_display_message(
-        self, username, role, endpoint_url, patient_id=None
+        self, username, role, patient_id=None
     ):
         printdbg("__get_connect_display_message()")
 
@@ -276,77 +261,21 @@ class CarelinkClient:
             user_json["patientId"] = patient_id
 
         request_body = json.dumps(user_json)
-        recent_data = await self.__get_data(None, endpoint_url, None, request_body)
-        if recent_data is not None:
-            self.__correct_time_in_recent_data(recent_data)
+        recent_data = await self.__get_data(None, None, request_body)
         return recent_data
 
-    def __correct_time_in_recent_data(self, recent_data):
-        # TODO
-        pass
-
-    async def __execute_login_procedure(self):
-
-        last_login_success = False
-        self.__last_error_message = None
+    async def _get_access_token_payload(self, token_data):
+        printdbg("_get_access_token_payload()")
         try:
-            # Clear cookies
-            self.async_client.cookies.clear()
-
-            # Clear basic infos
-            self.__session_user = None
-            self.__session_profile = None
-            self.__session_country_settings = None
-            self.__session_monitor_data = None
-
-            # Get sessions infos if required
-            if not self.__carelink_patient_id:
-                sessionPatients = await self.__getPatients()
-                patient = self.__selectPatient(sessionPatients)
-                if patient:
-                    self.__carelink_patient_id = patient["username"]
-                    printdbg("Found patient %s %s (%s)" % (patient["firstName"],patient["lastName"],self.__carelink_patient_id))
-                else:
-                    printdbg("No patient found.")
-            if self.__session_user is None:
-                self.__session_user = await self.__get_my_user()
-            if self.__session_profile is None:
-                self.__session_profile = await self.__get_my_profile()
-            if self.__session_country_settings is None:
-                self.__session_country_settings = await self.__get_country_settings(
-                    self.__carelink_country, CARELINK_LANGUAGE_EN
-                )
-            if self.__session_monitor_data is None:
-                self.__session_monitor_data = await self.__get_monitor_data()
-
-            # Set login success if everything was ok:
-            if (
-                self.__session_user is not None
-                and self.__session_profile is not None
-                and self.__session_country_settings is not None
-                and self.__session_monitor_data is not None
-            ):
-                last_login_success = True
-
-        # pylint: disable=broad-except
-        except Exception as error:
-            printdbg(f"__execute_login_procedure() failed: exception {error}")
-            self.__last_error_message = error
-
-        self.__logged_in = last_login_success
-
-        return last_login_success
-
-    async def __checkAuthorizationToken(self):
-        if self.__carelink_auth_token == None:
-            printdbg("No token found")
-            return False
+            token = token_data["access_token"]
+        except:
+            printdbg("no access token found")
+            return None
         try:
             # Decode json web token payload
-            payload_b64 = self.__carelink_auth_token.split('.')[1]
+            payload_b64 = token.split('.')[1]
             payload_b64_bytes = payload_b64.encode()
             missing_padding = (4 - len(payload_b64_bytes) % 4) % 4
-            #print("missing_padding: %d" % missing_padding)
             if missing_padding:
                 payload_b64_bytes += b'=' * missing_padding
             payload_bytes = base64.b64decode(payload_b64_bytes)
@@ -357,127 +286,168 @@ class CarelinkClient:
             token_validto = payload_json["exp"]
             token_validto -= 600
         except:
-            printdbg("Malformed token")
-            return False
-
+            printdbg("Malformed access token")
+            return None
         # Save expiration time
         self.__auth_token_validto = datetime.fromtimestamp(token_validto, tz=timezone.utc).strftime('%a %b %d %H:%M:%S UTC %Y')
-        # Check expiration time stamp
-        tdiff = token_validto - time.time()
-        if tdiff < 0:
-            printdbg("Token has expired %ds ago" % abs(tdiff))
-            return False
+        return payload_json
 
-        printdbg("Token expires in %ds (%s)" % (tdiff,self.__auth_token_validto))
-        return True
+    async def __execute_init_procedure(self):
+        printdbg("__execute_init_procedure()")
+        if not self.__initialized:
+            self.__tokenData = await self._process_token_file(CON_CONTEXT_AUTH)
 
-    async def __refreshToken(self, token):
-        printdbg("Trying to refresh token")
+            if self.__tokenData is None:
+                return
+            self.__accessTokenPayload = await self._get_access_token_payload(self.__tokenData)
+            if self.__accessTokenPayload is None:
+                return
+            try:
+                self.__session_country = self.__accessTokenPayload["token_details"]["country"]
 
-        if token == None:
-            printdbg("__refreshToken() no token to refresh")
-            return False
+                self.__session_config = await self.__get_config_settings()
 
-        success = True
-        url = "https://" + self.__carelink_server() + "/patient/sso/reauth"
-        headers = self.__common_headers
-        headers["Accept"] = "application/json, text/plain, */*"
-        headers["Authorization"] = "Bearer " + token
+                self.__session_username = self.__accessTokenPayload["token_details"]["preferred_username"]
+                self.__session_user = await self.__get_my_user()
+
+                if self.__session_user["role"] in ["CARE_PARTNER","CARE_PARTNER_OUS"]:
+                    if not self.__carelink_patient_id:
+                        sessionPatients = await self.__getPatients()
+                        patient = self.__selectPatient(sessionPatients)
+                        if patient:
+                            self.__carelink_patient_id = patient["username"]
+                            printdbg("Found patient %s %s (%s)" % (patient["firstName"],patient["lastName"],self.__carelink_patient_id))
+                        else:
+                            printdbg("No patient found.")
+            except Exception as error:
+                printdbg(f"__execute_init_procedure() failed: exception {error}")
+                if self.__last_response_code in AUTH_ERROR_CODES:
+                    try:
+                        if await self.__refreshToken(self.__session_config, self.__tokenData):
+                            if await self._get_access_token_payload(self.__tokenData):
+                                printdbg("New token is valid until " + self.__auth_token_validto)
+                                await self._write_token_file(self.__tokenData, CON_CONTEXT_AUTH)
+                    except Exception as e:
+                        printdbg(e)
+                    return
+            self.__initialized = True
+        return
+
+    async def __refreshToken(self, config, token_data):
+        printdbg("__refreshToken")
+        success = False
+        token_url = config["token_url"]
+
+        user_data = {
+                "refresh_token": token_data["refresh_token"],
+                "client_id":     token_data["client_id"],
+                "client_secret": token_data["client_secret"],
+                "grant_type":    "refresh_token"
+                }
         try:
-            response = await self.post_async(url, headers = headers)
+            headers = {
+                "mag-identifier": token_data["mag-identifier"]
+            }
+            printdbg("Trying to refresh token")
+            response = await self.post_async(url=token_url, headers=headers, data=user_data)
             self.__last_response_code = response.status_code
-            if response.status_code == 200:
-                printdbg("Token successfully refreshed")
+            if self.__last_response_code == 200:
+                printdbg("Refreshed token successfully")
+                response_data = response.json()
+                self.__tokenData["access_token"] = response_data["access_token"]
+                self.__tokenData["refresh_token"] = response_data["refresh_token"]
+                success = True
             else:
-                printdbg(response.status_code)
-                raise ValueError("session post response is not OK")
+                raise ValueError("Failed to refresh token (%d)" % self.__last_response_code)
         except Exception as e:
             printdbg(e)
-            printdbg("Failed to refresh token (%d)" % response.status_code)
             success = False
         return success
 
-
-    async def __get_authorization_token(self):
-        auth_token = self.__carelink_auth_token
-        auth_token_validto = self.__auth_token_validto
-
-        if auth_token == None or auth_token_validto == None:
+    async def __handle_authorization_token(self):
+        printdbg("__handle_authorization_token()")
+        if await self._get_access_token_payload(self.__tokenData):
+            auth_token_validto = self.__auth_token_validto
+        else:
             printdbg("No valid token")
-            return None
+            return False
 
         if (datetime.strptime(auth_token_validto, '%a %b %d %H:%M:%S UTC %Y').replace(tzinfo=timezone.utc) - datetime.now(tz=timezone.utc)) < timedelta(seconds=AUTH_EXPIRE_DEADLINE_MINUTES*60):
-            printdbg("Token is valid until " + self.__auth_token_validto)
-            if await self.__refreshToken(auth_token):
-                self.__carelink_auth_token = self.async_client.cookies[CARELINK_AUTH_TOKEN_COOKIE_NAME]
-                self.__auth_token_validto = self.async_client.cookies[CARELINK_TOKEN_VALIDTO_COOKIE_NAME]
-                printdbg("New token is valid until " + self.__auth_token_validto)
-                try:
-                    cookie=os.path.join(os.getcwd(), CON_CONTEXT_COOKIE)
-                    printdbg(f"Cookiefile: {cookie}")
-                    with open(cookie, "w") as file:
-                        file.write(self.__carelink_auth_token)
-                        printdbg("Writing token to cookies.txt")
-                except:
-                    printdbg("Failed to store token")
-            else:
-                # inital token is old, but updated token in file exists
-                try:
-                    cookie=os.path.join(os.getcwd(), CON_CONTEXT_COOKIE)
-                    with open(cookie, "r") as file:
-                        self.__carelink_auth_token = file.read()
-                        printdbg("Read cookies.txt token")
-                        if not await self.__checkAuthorizationToken():
-                            printdbg("Manual login needed")
-                            return None
-                except:
-                    # Refresh failed, manual login needed
-                    printdbg("Manual login needed")
-                    return None
-
-        # there can be only one
-        return "Bearer " + self.__carelink_auth_token
+            printdbg("Current token is valid until " + self.__auth_token_validto)
+            if await self.__refreshToken(self.__session_config, self.__tokenData):
+                if await self._get_access_token_payload(self.__tokenData):
+                    printdbg("New token is valid until " + self.__auth_token_validto)
+                    await self._write_token_file(self.__tokenData, CON_CONTEXT_AUTH)
+        return True
 
     # Wrapper for data retrival methods
-
     async def get_recent_data(self):
         """Get most recent data."""
         # Force login to get basic info
-        if await self.__get_authorization_token() is not None:
-            if (
-                self.__carelink_country == "us"
-                or "BLE" in self.__session_monitor_data["deviceFamily"]
-            ):
-                role = (
-                    "carepartner"
-                    if self.__session_user["role"]
-                    in ["CARE_PARTNER", "CARE_PARTNER_OUS"]
-                    else "patient"
-                )
-                return await self.__get_connect_display_message(
-                    self.__session_profile["username"],
-                    role,
-                    self.__session_country_settings["blePereodicDataEndpoint"],
-                    self.__carelink_patient_id,
-                )
-            else:
-                return await self.__get_last24_hours()
+        if await self.__handle_authorization_token():
+            role = (
+                "carepartner"
+                if self.__session_user["role"]
+                in ["CARE_PARTNER", "CARE_PARTNER_OUS"]
+                else "patient"
+            )
+            return await self.__get_connect_display_message(
+                self.__session_username,
+                role,
+                self.__carelink_patient_id,
+            )
         else:
             return None
+
+    async def _write_token_file(self, obj, filename):
+        printdbg("_write_token_file()")
+        with open(filename, 'w') as f:
+            json.dump(obj, f, indent=4)
+
+    async def _process_token_file(self, filename):
+        printdbg("_process_token_file()")
+        token_data = None
+        if os.path.isfile(filename):
+            try:
+                token_data = json.loads(open(filename, "r").read())
+            except json.JSONDecodeError:
+                printdbg("ERROR: failed parsing token file %s" % filename)
+            cfg_complete=True
+            if token_data is not None:
+                required_fields = ["access_token", "refresh_token", "client_id", "client_secret", "mag-identifier"]
+                for f in required_fields:
+                    if f not in token_data:
+                        printdbg("ERROR: field %s is missing from token file" % f)
+                        cfg_complete=False
+            if not cfg_complete:
+                token_data=None
+        else:
+            printdbg(f"Authentification file {filename} does not exist.")
+            if self.__carelink_access_token and self.__carelink_refresh_token and self.__client_id and self.__client_secret and self.__mag_identifier:
+                printdbg(f"Found static configuration. Create Authentificaiton file.")
+                token_data = {"access_token" : self.__carelink_access_token,
+                            "refresh_token" : self.__carelink_refresh_token,
+                            "client_id" : self.__client_id,
+                            "client_secret" : self.__client_secret,
+                            "mag-identifier" : self.__mag_identifier,
+                            }
+                await self._write_token_file(token_data, filename)
+            else:
+                printdbg("ERROR: No sufficient configuration found")
+        return token_data
 
     # Authentication methods
     async def login(self):
         """perform login"""
-        if not self.__logged_in:
-            await self.__checkAuthorizationToken()
-            await self.__execute_login_procedure()
-        return self.__logged_in
+        if not self.__initialized:
+            await self.__execute_init_procedure()
+        return self.__initialized
 
     def run_in_console(self):
         """If running this module directly, print all the values in the console."""
         print("Reading...")
         asyncio.run(self.login())
-        if self.__logged_in:
+        if self.__initialized:
             result = asyncio.run(self.get_recent_data())
             print(f"data: {result}")
 
@@ -486,29 +456,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Retrieve recent data from last 24h from Medtronic Carelink."
     )
+    parser.add_argument("-i", "--patientId", dest="carelink_patient", help="Carelink Patient ID")
     parser.add_argument("-t", "--token", dest="token", help="Carelink Token")
-    parser.add_argument(
-        "-i", "--patientId", dest="carelink_patient", help="Carelink Patient ID"
-    )
-    parser.add_argument(
-        "-c",
-        "--country",
-        dest="country",
-        help="Carelink Country (US, NL, DE, AU, UK, etc)",
-    )
-
+    parser.add_argument("-r", "--rtoken", dest="refresh_token", help="Refresh Token")
+    parser.add_argument("-c", "--clientid", dest="client_id", help="Client ID")
+    parser.add_argument("-s", "--secret", dest="client_secret", help="Client Secret")
+    parser.add_argument("-m", "--mag", dest="mag_identifier", help="Mag Identifier")
     args = parser.parse_args()
 
-    if args.country is None:
-        raise ValueError("Country is required")
-
-    if args.token is None:
-        raise ValueError("Token is required")
-
     TESTAPI = CarelinkClient(
-        carelink_country=args.country,
         carelink_token = args.token,
-        carelink_patient_id = args.carelink_patient
+        carelink_patient_id = args.carelink_patient,
+        carelink_refresh_token = args.refresh_token,
+        client_id = args.client_id,
+        client_secret = args.client_secret,
+        mag_identifier = args.mag_identifier
     )
 
     TESTAPI.run_in_console()

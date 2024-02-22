@@ -11,10 +11,14 @@
         "step": {
             "user": {
                 "title": "Setup your Carelink account",
-                "description": "Provide your session token. Please ensure that you enter the 2-letter ISO code corresponding to the country in which your account was registered. If you are logging in with a Carelink Care Partner account, please include the patient ID, which should be the username of the main Carelink account.",
+                "description": "Run the external script to get the session information. These can be copied as a file into the Carelink Integration directory, or the values ??of the parameters can be entered into this mask. If you are logging in with a Carelink Care Partner account, please provide Patient ID. This should be the primary Carelink account username. The Scan Interval determines the number of seconds before the data is collected again.",
                 "data": {
-                    "country": "Country",
-                    "token": "Session Token",
+                    "scan_interval": "Scan Interval in seconds (30-300)",
+                    "cl_token": "Access Token (Optional)",
+                    "cl_refresh_token": "Refresh Token (Optional)",
+                    "cl_client_id": "Client ID (Optional)",
+                    "cl_client_secret": "Client Secret (Optional)",
+                    "cl_mag_identifier": "Mag Identifier (Optional)",
                     "patientId": "Patient ID (Optional)",
                     "nightscout_url": "Nightscout URL (Optional)",
                     "nightscout_api": "Nightscout API Secret (Optional)"

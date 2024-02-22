@@ -152,4 +152,7 @@ cython_debug/
 #.idea/
 
 *.DS_Store
-cookies.txt
+config/**
+!config/configuration.yaml
+/custom_components/carelink/logindata.json
+/utils/logindata.json
