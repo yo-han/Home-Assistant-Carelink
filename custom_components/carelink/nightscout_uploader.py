@@ -109,14 +109,7 @@ class NightscoutUploader:
 
     def __getDataStringFromIso(self, time, tz):
         dt = datetime.fromisoformat(time.replace(".000-00:00", ""))
-        dt = dt.astimezone(tz)
-        timestamp = dt.timestamp()
-        date = int(timestamp * 1000)
-        date_string = dt.isoformat()
-        return date, date_string
-
-    def __getDataString(self, time, tz):
-        dt = datetime.strptime(time,"%Y-%m-%dT%H:%M:%S.%fZ")
+        dt = dt.replace(tzinfo=tz)
         dt = dt.astimezone(tz)
         timestamp = dt.timestamp()
         date = int(timestamp * 1000)
@@ -376,7 +369,7 @@ class NightscoutUploader:
                 trend, delta = self.__ns_trend(sgs[count], sgs[count-1])
             except Exception:
                 pass
-            date, date_string=self.__getDataString(sg["datetime"], tz)
+            date, date_string=self.__getDataStringFromIso(sg["datetime"], tz)
             result.append(dict(
                 device=NS_USER_AGENT,
                 direction=trend,
