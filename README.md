@@ -32,7 +32,7 @@ Copy the `custom_components/carelink` to your `custom_components` folder. Reboot
 The needed information for the authentification process can either be provided as file (=logindata.json), or entered during the initial setup of the integration.
 #### Get the data
 The Home Assistant Carelink Integration needs the initial login data stored in the `logindata.json` file. This file can be created **by running the login script on a PC with a screen**.
-The login script from [@ondrej1024](https://github.com/ondrej1024)'s Carelink Python API, written by @palmarci (Pal Marci), was slightly modified and can be found here ["carelink_carepartner_api_login.py"](https://github.com/sedy89/Home-Assistant-Carelink/blob/json_login/utils/carelink_carepartner_api_login.py).
+The login script from [@ondrej1024](https://github.com/ondrej1024)'s Carelink Python API, written by @palmarci (Pal Marci), was slightly modified and can be found here ["carelink_carepartner_api_login.py"](https://github.com/yo-han/Home-Assistant-Carelink/blob/develop/utils/carelink_carepartner_api_login.py).
 
 Simply run:
 ```
