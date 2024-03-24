@@ -48,7 +48,14 @@ You might need to install the following Python packages to satisfy the script's 
 - curlify (pip install curlify)
 ```
 
-The script opens a Firefox web browser with the Carelink login page. You have to provide your Carelink patients or follower credentials (recommended) and solve the reCapcha.
+For Windows environment the following packages need to be installed too:
+
+```
+setuptools (pip install setuptools)
+packaging (pip install packaging)
+```
+
+The script opens a Firefox web browser (so make sure Firefox is installed on your machine) with the Carelink login page. You have to provide your Carelink patients or follower credentials (recommended) and solve the reCapcha.
 On successful completion of the login, the data file will be created with the following structure:
 
 ![grafik](https://github.com/sedy89/Home-Assistant-Carelink/assets/65983953/35a60542-03fc-4deb-a14c-c96b0155bdd4)
