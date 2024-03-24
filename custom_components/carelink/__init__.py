@@ -98,8 +98,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     config = entry.data
 
     carelink_client = CarelinkClient(
-        config["cl_token"],
         config["cl_refresh_token"],
+        config["cl_token"],
         config["cl_client_id"],
         config["cl_client_secret"],
         config["cl_mag_identifier"],
