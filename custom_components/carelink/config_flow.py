@@ -38,8 +38,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     """
 
     client = CarelinkClient(
-        data.setdefault("cl_token", None),
         data.setdefault("cl_refresh_token", None),
+        data.setdefault("cl_token", None),
         data.setdefault("cl_client_id", None),
         data.setdefault("cl_client_secret", None),
         data.setdefault("cl_mag_identifier", None),
