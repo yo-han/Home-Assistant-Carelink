@@ -45,6 +45,7 @@ You might need to install the following Python packages to satisfy the script's 
 - requests
 - OpenSSL (pip install pyOpenSSL)
 - seleniumwire (pip install selenium-wire)
+- curlify (pip install curlify)
 ```
 
 The script opens a Firefox web browser with the Carelink login page. You have to provide your Carelink patients or follower credentials (recommended) and solve the reCapcha.
