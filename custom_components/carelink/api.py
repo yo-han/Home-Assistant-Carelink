@@ -41,7 +41,7 @@ VERSION = "0.4"
 # Constants
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
 CON_CONTEXT_AUTH = "custom_components/carelink/logindata.json"
-CARELINK_CONFIG_URL = "https://clcloud.minimed.com/connect/carepartner/v6/discover/android/3.1"
+CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v11/discover/android/3.1"
 AUTH_ERROR_CODES = [401,403]
 
 DEBUG = False
