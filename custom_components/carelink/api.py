@@ -1,28 +1,19 @@
 """
-
  Carelink Client library
-
  Description:
-
    This library implements a client for the Medtronic Carelink API.
    It is a port of the original Java client by Bence Szász:
    https://github.com/benceszasz/CareLinkJavaClient
-
  Authors:
-
    Ondrej Wisniewski (ondrej.wisniewski *at* gmail.com)
    Johan Kuijt (github *at* w3f.nl)
-
  Changelog:
-
    09/05/2021 - Initial public release (Ondrej)
    06/06/2021 - Add check for expired token (Ondrej)
    19/09/2022 - Check for general BLE device family to support 770G (Ondrej)
    28/11/2022 - Async version of the library and console test option (Johan)
    29/11/2022 - Pylint problem modifications (Johan)
-
  Copyright 2021-2022, Ondrej Wisniewski
-
 """
 
 import argparse
@@ -385,6 +376,9 @@ class CarelinkClient:
         """Get most recent data."""
         # Force login to get basic info
         if await self.__handle_authorization_token():
+            if self.__session_user is None:
+                _LOGGER.error("Session user is None. Cannot fetch recent data.")
+                return None
             role = (
                 "carepartner"
                 if self.__session_user["role"]
