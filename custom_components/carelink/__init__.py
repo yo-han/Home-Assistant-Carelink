@@ -85,7 +85,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def convert_date_to_isodate(date):
-    date_iso = re.sub("\.\d{3}Z$", "+00:00", date)
+    date_iso = re.sub(r"\.\d{3}Z$", "+00:00", date)
 
     return datetime.fromisoformat(date_iso).replace(tzinfo=None)
 
