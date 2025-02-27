@@ -42,10 +42,11 @@ python carelink_carepartner_api_login.py
 You might need to install the following Python packages to satisfy the script's dependencies:
 
 ```
-- requests
+- requests (pip install requests)
 - OpenSSL (pip install pyOpenSSL)
 - seleniumwire (pip install selenium-wire)
 - curlify (pip install curlify)
+- blinker vertion 1.7.0 (pip install blinker==1.7.0) (Issue documented here: seleniumbase/SeleniumBase#2782)
 ```
 
 For Windows environment the following packages need to be installed too:
