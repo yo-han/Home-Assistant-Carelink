@@ -1,0 +1,29 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Устройство уже настроено"
+        },
+        "error": {
+            "cannot_connect": "Не удалось подключиться",
+            "invalid_auth": "Неверные учетные данные",
+            "unknown": "Неизвестная ошибка"
+        },
+        "step": {
+            "user": {
+                "title": "Настройка аккаунта Carelink",
+                "description": "Запустите внешний скрипт, чтобы получить данные сессии. Эти данные можно скопировать в файл и положить в директорию интеграции Carelink, либо ввести значения параметров вручную в эту форму. Если вы входите через Carelink Care Partner, укажите Patient ID — это должен быть основной логин Carelink. Интервал сканирования задает количество секунд между опросами данных.",
+                "data": {
+                    "scan_interval": "Интервал сканирования в секундах (30-300)",
+                    "cl_token": "Access Token (опционально)",
+                    "cl_refresh_token": "Refresh Token (опционально)",
+                    "cl_client_id": "Client ID (опционально)",
+                    "cl_client_secret": "Client Secret (опционально)",
+                    "cl_mag_identifier": "Mag Identifier (опционально)",
+                    "patientId": "Patient ID (опционально)",
+                    "nightscout_url": "URL Nightscout (опционально)",
+                    "nightscout_api": "Nightscout API Secret (опционально)"
+                }
+            }
+        }
+    }
+}
