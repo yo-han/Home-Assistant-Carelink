@@ -4,7 +4,7 @@
   "codeowners": ["@yo-han"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://www.home-assistant.io/integrations/carelink",
+  "documentation": "https://github.com/yo-han/Home-Assistant-Carelink",
   "homekit": {},
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/yo-han/Home-Assistant-Carelink/issues",
