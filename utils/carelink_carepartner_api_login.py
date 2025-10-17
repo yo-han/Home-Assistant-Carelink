@@ -177,7 +177,7 @@ def do_login(endpoint_config):
 	captcha_url = providers["providers"][0]["provider"]["auth_url"]
 
 	# step 3 captcha login and consent
-	print(f"captcha url: {captcha_url}")
+	print("captcha url received")  # Omit sensitive details from logs
 	captcha_code, captcha_sso_state = do_captcha(captcha_url, sso_config["oauth"]["client"]["client_ids"][0]['redirect_uri'])
 	print(f"sso state after captcha: {captcha_sso_state}")
 
