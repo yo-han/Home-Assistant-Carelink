@@ -22,6 +22,7 @@
 #
 #    28/12/2023 - Initial version
 #    14/03/2025 - Updated discovery_url, based on https://github.com/ondrej1024/carelink-python-client/pull/23
+#    19/11/2024 - Update discovery_url
 #
 #
 #  Dependencies:
@@ -32,6 +33,7 @@
 #     - seleniumwire
 #
 ###############################################################################
+import argparse
 import base64
 import hashlib
 import json
@@ -102,6 +104,8 @@ def reformat_csr(csr):
 	return csr
 
 def do_captcha(url, redirect_url):
+	print("opening Firefox instance...")
+	print("Warning: you may need to close Firefox if it's already running or nothing happens!")
 	driver = webdriver.Firefox()
 	driver.get(url)
 
@@ -112,8 +116,10 @@ def do_captcha(url, redirect_url):
 					if "location" in request.response.headers:
 						location = request.response.headers["location"]
 						if redirect_url in location:
-							code = re.search(r"code=(.*)&", location).group(1)
-							state = re.search(r"state=(.*)", location).group(1)
+							code = re.search(r"code=(.*)", location).group(1)
+							state = None
+							if "state=" in location:
+								state = re.search(r"state=(.*)", location).group(1)
 							driver.quit()
 							return (code, state)
 		sleep(0.1)
@@ -122,27 +128,38 @@ def resolve_endpoint_config(discovery_url, is_us_region=False):
 	discover_resp = json.loads(requests.get(discovery_url).text)
 	sso_url = None
 
+	is_auth0 = False
+
 	for c in discover_resp["CP"]:
 		if c['region'].lower() == "us" and is_us_region:
-			sso_url = c['SSOConfiguration']
+			key = c['UseSSOConfiguration']
+			sso_url = c[key]
+			if "Auth0" in key:
+				is_auth0 = True
 		elif c['region'].lower() == "eu" and not is_us_region:
-			sso_url = c['SSOConfiguration']
+			key = c['UseSSOConfiguration']
+			sso_url = c[key]
+			if "Auth0" in key:
+				is_auth0 = True
 		
 	if sso_url is None:
 		raise Exception("Could not get SSO config url")
 	
 	sso_config = json.loads(requests.get(sso_url).text)
 	api_base_url = f"https://{sso_config['server']['hostname']}:{sso_config['server']['port']}/{sso_config['server']['prefix']}"
-	return sso_config, api_base_url
+	if api_base_url.endswith('/'):
+		api_base_url = api_base_url[:-1]
+	return sso_config, api_base_url, is_auth0
 
 def write_datafile(obj, filename):
 	print("wrote data file")
 	with open(filename, 'w') as f:
 		json.dump(obj, f, indent=4)
 
-def do_login(endpoint_config):
-	sso_config, api_base_url = endpoint_config
-	# step 1 initialize
+def do_login_non_auth0(endpoint_config):
+	sso_config, api_base_url, is_auth0 = endpoint_config
+
+		# step 1 initialize
 	data = {
 		'client_id': sso_config['oauth']['client']['client_ids'][0]['client_id'],
 		"nonce" :  random_uuid()
@@ -177,7 +194,7 @@ def do_login(endpoint_config):
 	captcha_url = providers["providers"][0]["provider"]["auth_url"]
 
 	# step 3 captcha login and consent
-	print("captcha url received")  # Omit sensitive details from logs
+	print(f"captcha url: {captcha_url}")
 	captcha_code, captcha_sso_state = do_captcha(captcha_url, sso_config["oauth"]["client"]["client_ids"][0]['redirect_uri'])
 	print(f"sso state after captcha: {captcha_sso_state}")
 
@@ -238,6 +255,56 @@ def do_login(endpoint_config):
 	write_datafile(token_data, logindata_file)
 	return token_data
 
+def do_login_auth0(endpoint_config):
+    sso_config, api_base_url, is_auth0 = endpoint_config
+    auth_params = {
+		'client_id': sso_config['client']['client_id'],
+		'response_type' : 'code',
+		'scope': sso_config["client"]["scope"],
+		'redirect_uri': sso_config["client"]['redirect_uri'],
+		'audience': sso_config["client"]["audience"]
+	}
+    authorize_url = (
+        api_base_url + sso_config["system_endpoints"]["authorization_endpoint_path"]
+    )
+    captcha_url = f"{authorize_url}?{'&'.join(f'{key}={value}' for key, value in auth_params.items())}"
+    captcha_code, captcha_sso_state = do_captcha(
+        captcha_url, sso_config["client"]["redirect_uri"]
+    )
+
+    token_req_url = api_base_url + sso_config["system_endpoints"]["token_endpoint_path"]
+    token_req_data = {
+        "grant_type": "authorization_code",
+        "client_id": sso_config["client"]["client_id"],
+        "code": captcha_code,
+        "redirect_uri": sso_config["client"]["redirect_uri"],
+    }
+    token_req = requests.post(token_req_url, data=token_req_data)
+    if token_req.status_code != 200:
+        print(f"\n\n{curlify.to_curl(token_req.request)}")
+        print(token_req.text)
+        raise Exception("Could not get token data")
+
+    token_data = json.loads(token_req.text)
+    print(f"got token data from server")
+
+    print(token_data)
+
+    token_data["client_id"] = token_req_data["client_id"]
+    del token_data["expires_in"]
+    del token_data["token_type"]
+
+    write_datafile(token_data, logindata_file)
+    return token_data
+
+def do_login(endpoint_config):
+	sso_config, api_base_url, is_auth0 = endpoint_config
+
+	if is_auth0:
+		return do_login_auth0(endpoint_config)
+	else:
+		return do_login_non_auth0(endpoint_config)
+
 def read_data_file(file):
 	token_data = None
 	if os.path.isfile(file):
@@ -257,20 +324,25 @@ def read_data_file(file):
 # config
 is_debug = False
 logindata_file = 'logindata.json'
-discovery_url = 'https://clcloud.minimed.eu/connect/carepartner/v11/discover/android/3.2'
+discovery_url = 'https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6'
 rsa_keysize = 2048
 
-def main():
+def main(is_us_region):
 	if is_debug:
 		setup_logging()
 
 	token_data = read_data_file(logindata_file)
-	
+
 	if token_data == None:
 		print(f"performing login...")
-		endpoint_config = resolve_endpoint_config(discovery_url)
+		endpoint_config = resolve_endpoint_config(discovery_url, is_us_region=is_us_region)
 		token_data = do_login(endpoint_config)
 	else:
 		print(f"token data file already exists")
-		
-main()
+
+# Parse command line
+parser = argparse.ArgumentParser()
+parser.add_argument('--us', help='Specify US region', default=False, action='store_true')
+args = parser.parse_args()
+
+main(args.us)
