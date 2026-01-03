@@ -33,7 +33,7 @@ VERSION = "0.4"
 # Constants
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
 CON_CONTEXT_AUTH = "custom_components/carelink/logindata.json"
-CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v11/discover/android/3.3"
+CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6"
 AUTH_ERROR_CODES = [401,403]
 
 DEBUG = False
@@ -137,7 +137,8 @@ class CarelinkClient:
             try:
                 # Add header
                 headers = self.__common_headers
-                headers["mag-identifier"] = self.__tokenData["mag-identifier"]
+                if "mag-identifier" in self.__tokenData:
+                    headers["mag-identifier"] = self.__tokenData["mag-identifier"]
                 headers["Authorization"] = "Bearer " + self.__tokenData["access_token"]
                 if data is None:
                     headers["Accept"] = "application/json, text/plain, */*"
@@ -225,7 +226,9 @@ class CarelinkClient:
             if config is None:
                 raise Exception(f"ERROR: failed to get config base urls for region {region}")
 
-            resp = await self.fetch_async(config["SSOConfiguration"], self.__common_headers)
+            sso_configuration_key = config["UseSSOConfiguration"]
+
+            resp = await self.fetch_async(config[sso_configuration_key], self.__common_headers)
             self.__last_response_code = resp.status_code
             if not resp.status_code == 200:
                 raise ValueError(
@@ -233,7 +236,11 @@ class CarelinkClient:
                     + str(resp.status_code)
                 )
             sso_config = resp.json()
-            sso_base_url = f"https://{sso_config['server']['hostname']}:{sso_config['server']['port']}/{sso_config['server']['prefix']}"
+            sso_base_url = "https://%s:%d/%s" % (sso_config["server"]["hostname"],
+                                    sso_config["server"]["port"],
+                                    sso_config["server"]["prefix"])
+            if sso_base_url.endswith('/'):
+                sso_base_url = sso_base_url[:-1] # remove trailing slash if prefix is empty
             token_url = sso_base_url + sso_config["system_endpoints"]["token_endpoint_path"]
             config["token_url"] = token_url
         except Exception as e:
@@ -333,13 +340,14 @@ class CarelinkClient:
         user_data = {
                 "refresh_token": token_data["refresh_token"],
                 "client_id":     token_data["client_id"],
-                "client_secret": token_data["client_secret"],
                 "grant_type":    "refresh_token"
                 }
+        if "client_secret" in token_data:
+            user_data["client_secret"] = token_data["client_secret"]
         try:
-            headers = {
-                "mag-identifier": token_data["mag-identifier"]
-            }
+            headers = {}
+            if "mag-identifier" in token_data:
+                headers["mag-identifier"] = token_data["mag-identifier"]
             printdbg("Trying to refresh token")
             response = await self.post_async(url=token_url, headers=headers, data=user_data)
             self.__last_response_code = response.status_code
@@ -410,7 +418,7 @@ class CarelinkClient:
                 printdbg("ERROR: failed parsing token file %s" % filename)
             cfg_complete=True
             if token_data is not None:
-                required_fields = ["access_token", "refresh_token", "client_id", "client_secret", "mag-identifier"]
+                required_fields = ["access_token", "refresh_token", "client_id"]
                 for f in required_fields:
                     if f not in token_data:
                         printdbg("ERROR: field %s is missing from token file" % f)
@@ -419,14 +427,16 @@ class CarelinkClient:
                 token_data=None
         else:
             printdbg(f"Authentification file {filename} does not exist.")
-            if self.__carelink_access_token and self.__carelink_refresh_token and self.__client_id and self.__client_secret and self.__mag_identifier:
+            if self.__carelink_access_token and self.__carelink_refresh_token and self.__client_id:
                 printdbg(f"Found static configuration. Create Authentificaiton file.")
                 token_data = {"access_token" : self.__carelink_access_token,
                             "refresh_token" : self.__carelink_refresh_token,
                             "client_id" : self.__client_id,
-                            "client_secret" : self.__client_secret,
-                            "mag-identifier" : self.__mag_identifier,
                             }
+                if self.__client_secret:
+                    token_data["client_secret"] = self.__client_secret
+                if self.__mag_identifier:
+                    token_data["mag-identifier"] = self.__mag_identifier
                 await self._write_token_file(token_data, filename)
             else:
                 printdbg("ERROR: No sufficient configuration found")
