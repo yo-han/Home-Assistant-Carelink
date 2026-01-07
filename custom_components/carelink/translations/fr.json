@@ -1,7 +1,8 @@
 {
     "config": {
         "abort": {
-            "already_configured": "L'appareil est déjà configuré"
+            "already_configured": "L'appareil est déjà configuré",
+            "reconfigure_successful": "L'intégration a été reconfigurée avec succès."
         },
         "error": {
             "cannot_connect": "Échec de la connexion",
@@ -23,7 +24,16 @@
                     "nightscout_url": "Nightscout URL (facultatif)",
                     "nightscout_api": "Nightscout API Secret (facultatif)"
                 }
-            }
+            },
+		    "reconfigure": {
+				"title": "Reconfigurer Carelink",
+				"description": "Mettez à jour votre connexion Nightscout ou l'intervalle d'analyse.",
+				"data": {
+                    "scan_interval": "Intervalle d'analyse en secondes (30-300)",
+                    "nightscout_url": "Nightscout URL (facultatif)",
+                    "nightscout_api": "Nightscout API Secret (facultatif)"
+                }
+		    }
         }
     }
 }

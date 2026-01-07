@@ -1,7 +1,8 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Устройство уже настроено"
+            "already_configured": "Устройство уже настроено",
+            "reconfigure_successful": "Интеграция была успешно перенастроена."
         },
         "error": {
             "cannot_connect": "Не удалось подключиться",
@@ -23,7 +24,16 @@
                     "nightscout_url": "URL Nightscout (опционально)",
                     "nightscout_api": "Nightscout API Secret (опционально)"
                 }
-            }
+            },
+		    "reconfigure": {
+				"title": "Перенастройка Carelink",
+				"description": "Обновите подключение к Nightscout или интервал сканирования.",
+				"data": {
+                    "scan_interval": "Интервал сканирования в секундах (30-300)",
+                    "nightscout_url": "URL Nightscout (опционально)",
+                    "nightscout_api": "Nightscout API Secret (опционально)"
+                }
+		    }
         }
     }
 }

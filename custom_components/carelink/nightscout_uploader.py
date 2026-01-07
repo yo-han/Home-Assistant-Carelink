@@ -367,7 +367,7 @@ class NightscoutUploader:
                 battery=dict(
                     status=rawdata["conduitBatteryStatus"],
                     voltage=rawdata["conduitBatteryLevel"]),
-                reservoir=rawdata["activeInsulin"]["amount"],
+                reservoir=rawdata["reservoirRemainingUnits"],
                 status=dict(
                     status=rawdata["systemStatusMessage"],
                     suspended=rawdata["pumpSuspended"])))]

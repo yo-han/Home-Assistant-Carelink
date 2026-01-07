@@ -1,7 +1,8 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Apparaat is al geconfigureerd"
+            "already_configured": "Apparaat is al geconfigureerd",
+            "reconfigure_successful": "De integratie is succesvol opnieuw geconfigureerd."
         },
         "error": {
             "cannot_connect": "Verbinding mislukt",
@@ -23,7 +24,16 @@
                     "nightscout_url": "Nightscout URL (Optioneel)",
                     "nightscout_api": "Nightscout API Secret (Optioneel)"
                 }
-            }
+            },
+		    "reconfigure": {
+                "title": "Carelink opnieuw configureren",
+				"description": "Werk uw Nightscout-verbinding of scaninterval bij.",
+                "data": {
+                    "scan_interval": "Scaninterval in seconden (30-300)",
+                    "nightscout_url": "Nightscout URL (Optioneel)",
+                    "nightscout_api": "Nightscout API Secret (Optioneel)"
+                }
+		    }
         }
     }
 }

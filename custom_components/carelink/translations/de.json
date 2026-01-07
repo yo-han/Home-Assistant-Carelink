@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "already_configured": "Gerät ist bereits konfiguriert"
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "reconfigure_successful": "Die Integration wurde erfolgreich neu konfiguriert."
     },
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen",
@@ -23,6 +24,15 @@
           "nightscout_url": "Nightscout URL (optional)",
           "nightscout_api": "Nightscout API Secret (optional)"
         }
+      },
+      "reconfigure": {
+		"title": "Carelink neu konfigurieren",
+		"description": "Aktualisieren Sie Ihre Nightscout-Verbindung oder das Scan-Intervall.",
+        "data": {
+          "scan_interval": "Scan Intervall in Sekunden (30-300)",
+          "nightscout_url": "Nightscout URL (optional)",
+          "nightscout_api": "Nightscout API Secret (optional)"
+		}
       }
     }
   }
