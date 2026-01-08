@@ -66,7 +66,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional("cl_token", description={"suggested_value": defaults.get("cl_token", "")}): str,
                 vol.Optional("cl_refresh_token", description={"suggested_value": defaults.get("cl_refresh_token", "")}): str,
                 vol.Optional("cl_client_id", description={"suggested_value": defaults.get("cl_client_id", "")}): str,
-                vol.Optional("cl_client_secret", description={"suggested_value": defaults.get("cl_client_id", "")}): str,
+                vol.Optional("cl_client_secret", description={"suggested_value": defaults.get("cl_client_secret", "")}): str,
                 vol.Optional("cl_mag_identifier", description={"suggested_value": defaults.get("cl_mag_identifier", "")}): str,
                 vol.Optional("patientId", description={"suggested_value": defaults.get("patientId", "")}): str,
             })
@@ -75,7 +75,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema.update({
             vol.Optional("nightscout_url", description={"suggested_value": defaults.get("nightscout_url", "")}): str,
             vol.Optional("nightscout_api", description={"suggested_value": defaults.get("nightscout_api", "")}): str,
-            vol.Required(SCAN_INTERVAL, default=60): vol.All(vol.Coerce(int), vol.Range(min=30, max=300)),
+            vol.Required(SCAN_INTERVAL, description={"suggested_value": defaults.get(SCAN_INTERVAL, 60)}): vol.All(vol.Coerce(int), vol.Range(min=30, max=300))
         })
 
         return vol.Schema(schema)
