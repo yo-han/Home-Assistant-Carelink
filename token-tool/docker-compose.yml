@@ -1,0 +1,18 @@
+services:
+  carelink-token-tool:
+    build: .
+    image: carelink-token-tool:latest
+    container_name: carelink-token-tool
+    ports:
+      - "6080:6080"
+      - "8000:8000"
+    volumes:
+      - ./output:/output
+    environment:
+      # Set to "--us" for US region, leave empty for EU
+      - CARELINK_REGION=
+      # Optional: pre-fill your credentials (you still need to solve CAPTCHA)
+      - CARELINK_USERNAME=
+      - CARELINK_PASSWORD=
+    # Needed for browser rendering
+    shm_size: "2gb"

@@ -31,12 +31,42 @@ Copy the `custom_components/carelink` to your `custom_components` folder. Reboot
 ### Carelink Login Data
 The needed information for the authentification process can either be provided as file (=logindata.json), or entered during the initial setup of the integration.
 #### Get the data
-The Home Assistant Carelink Integration needs the initial login data stored in the `logindata.json` file. This file can be created **by running the login script on a PC with a screen**.
+The Home Assistant Carelink Integration needs the initial login data stored in the `logindata.json` file. There are two ways to create this file:
+
+##### Option 1: Docker Token Tool (Recommended)
+
+The easiest way to get your `logindata.json` is using our Docker-based token tool. This requires only Docker - no Python or other dependencies needed.
+
+1. Navigate to the token-tool folder and edit `docker-compose.yml` with your credentials:
+   ```yaml
+   environment:
+     - CARELINK_USERNAME=your@email.com
+     - CARELINK_PASSWORD=yourpassword
+   ```
+
+2. Run the tool:
+   ```bash
+   cd token-tool
+   docker compose up --build
+   ```
+
+3. Open `http://localhost:6080/vnc.html?autoconnect=true` in your browser
+
+4. **Wait a few seconds** for your credentials to be auto-filled, then solve the CAPTCHA
+
+5. Download your token file from `http://localhost:8000/logindata.json` or find it in `./token-tool/output/`
+
+For more details and troubleshooting, see the [Token Tool README](token-tool/README.md).
+
+##### Option 2: Python Script
+
+Alternatively, you can run the login script directly on a PC with a screen.
 The login script from [@ondrej1024](https://github.com/ondrej1024)'s Carelink Python API, written by @palmarci (Pal Marci), was slightly modified and can be found here ["carelink_carepartner_api_login.py"](https://github.com/yo-han/Home-Assistant-Carelink/blob/develop/utils/carelink_carepartner_api_login.py).
 
 Simply run:
+
 ```
-python carelink_carepartner_api_login.py 
+python carelink_carepartner_api_login.py
 ```
 
 You might need to install the following Python packages to satisfy the script's dependencies:

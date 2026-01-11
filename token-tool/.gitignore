@@ -1,0 +1,4 @@
+# Don't commit sensitive token data
+output/logindata.json
+output/*.json
+!output/.gitkeep
