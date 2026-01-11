@@ -156,9 +156,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
         # Close HTTP clients to prevent memory leaks
         if CLIENT in entry_data:
-            await entry_data[CLIENT].close()
+            try:
+                await entry_data[CLIENT].close()
+            except Exception as error:
+                _LOGGER.warning("Failed to close Carelink client: %s", error)
         if UPLOADER in entry_data:
-            await entry_data[UPLOADER].close()
+            try:
+                await entry_data[UPLOADER].close()
+            except Exception as error:
+                _LOGGER.warning("Failed to close Nightscout uploader: %s", error)
 
     return unload_ok
 

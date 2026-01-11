@@ -138,7 +138,7 @@ class NightscoutUploader:
         try:
             data = self.__getDeviceStatus(rawdata)
         except Exception as error:
-            printdbg(f"__setDeviceStatus() exeption: {error}")
+            printdbg(f"__setDeviceStatus() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "devicestatus"
@@ -149,7 +149,7 @@ class NightscoutUploader:
         try:
             data = self.__getSGS(rawdata, tz)
         except Exception as error:
-            printdbg(f"__setSGS() exeption: {error}")
+            printdbg(f"__setSGS() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "entries"
@@ -160,7 +160,7 @@ class NightscoutUploader:
         try:
             data = self.__getBasal(rawdata, tz)
         except Exception as error:
-            printdbg(f"__setBasal() exeption: {error}")
+            printdbg(f"__setBasal() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "treatments"
@@ -171,7 +171,7 @@ class NightscoutUploader:
         try:
             data = self.__getBolus(rawdata, tz)
         except Exception as error:
-            printdbg(f"__setBolus() exeption: {error}")
+            printdbg(f"__setBolus() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "treatments"
@@ -182,7 +182,7 @@ class NightscoutUploader:
         try:
             data = self.__getAutoBolus(rawdata, tz)
         except Exception as error:
-            printdbg(f"__setAutoBolus() exeption: {error}")
+            printdbg(f"__setAutoBolus() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "treatments"
@@ -193,7 +193,7 @@ class NightscoutUploader:
         try:
             data = self.__getAlarms(rawdata, tz)
         except Exception as error:
-            printdbg(f"__setAlarms() exeption: {error}")
+            printdbg(f"__setAlarms() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "treatments"
@@ -204,7 +204,7 @@ class NightscoutUploader:
         try:
             data = self.__getMsgs(rawdata, tz)
         except Exception as error:
-            printdbg(f"__setMsgs() exeption: {error}")
+            printdbg(f"__setMsgs() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "treatments"
@@ -215,7 +215,7 @@ class NightscoutUploader:
         try:
             data = self.__getAlerts(rawdata, tz)
         except Exception as error:
-            printdbg(f"__setAlerts() exeption: {error}")
+            printdbg(f"__setAlerts() exception: {error}")
             data = []
         return await self.__set_data(
             self.__nightscout_url, data, "treatments"
