@@ -56,7 +56,7 @@ Open `http://localhost:6080/vnc.html?autoconnect=true` and enter credentials man
 For **US region**, add to your `.env` file:
 
 ```bash
-CARELINK_REGION=--us
+CARELINK_REGION=us
 ```
 
 ## Docker Commands

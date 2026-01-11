@@ -29,8 +29,8 @@ echo ""
 # Change to output directory so logindata.json is saved there
 cd /output
 
-# Run the login script
-python /app/carelink_login.py "$CARELINK_REGION"
+# Run the login script (reads CARELINK_REGION from environment)
+python /app/carelink_login.py
 LOGIN_RESULT=$?
 
 echo ""
