@@ -11,15 +11,20 @@ A Docker-based tool to easily obtain your Carelink login tokens for the Home Ass
 
 ### Option 1: With auto-fill credentials (Recommended)
 
-Edit `docker-compose.yml` and add your credentials:
+1. Copy the example environment file and add your credentials:
 
-```yaml
-environment:
-  - CARELINK_USERNAME=your@email.com
-  - CARELINK_PASSWORD=yourpassword
+```bash
+cp .env.example .env
 ```
 
-Then run:
+2. Edit `.env` with your credentials:
+
+```bash
+CARELINK_USERNAME=your@email.com
+CARELINK_PASSWORD=yourpassword
+```
+
+3. Run the tool:
 
 ```bash
 docker compose up --build
@@ -48,11 +53,10 @@ Open `http://localhost:6080/vnc.html?autoconnect=true` and enter credentials man
 
 ## Region Selection
 
-For **US region**, set the environment variable:
+For **US region**, add to your `.env` file:
 
-```yaml
-environment:
-  - CARELINK_REGION=--us
+```bash
+CARELINK_REGION=--us
 ```
 
 ## Docker Commands
@@ -83,8 +87,9 @@ docker compose logs -f
 - Check terminal output for error messages
 - Make sure you completed the login including CAPTCHA
 
-## Security Note
+## Security
 
-- Your credentials are only used locally within the Docker container
+- **Credentials are stored locally** in your `.env` file (which is gitignored)
+- **Ports are bound to localhost only** - not accessible from other devices on your network
 - The `logindata.json` contains sensitive tokens - keep it secure
-- Consider removing credentials from `docker-compose.yml` after use
+- Delete your `.env` file after obtaining your tokens if desired

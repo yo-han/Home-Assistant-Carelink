@@ -1,4 +1,5 @@
-# Don't commit sensitive token data
+# Don't commit sensitive data
+.env
 output/logindata.json
 output/*.json
 !output/.gitkeep

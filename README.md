@@ -37,16 +37,15 @@ The Home Assistant Carelink Integration needs the initial login data stored in t
 
 The easiest way to get your `logindata.json` is using our Docker-based token tool. This requires only Docker - no Python or other dependencies needed.
 
-1. Navigate to the token-tool folder and edit `docker-compose.yml` with your credentials:
-   ```yaml
-   environment:
-     - CARELINK_USERNAME=your@email.com
-     - CARELINK_PASSWORD=yourpassword
+1. Navigate to the token-tool folder and set up your credentials:
+   ```bash
+   cd token-tool
+   cp .env.example .env
+   # Edit .env with your Carelink username and password
    ```
 
 2. Run the tool:
    ```bash
-   cd token-tool
    docker compose up --build
    ```
 
