@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urlparse
 
 import voluptuous as vol
 
@@ -36,14 +37,27 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         if not await client.login():
             raise InvalidAuth
     finally:
-        await client.close()
+        try:
+            await client.close()
+        except Exception:
+            _LOGGER.warning("Failed to close Carelink client during validation")
 
     nightscout_url = data.setdefault("nightscout_url", None)
     nightscout_api = data.setdefault("nightscout_api", None)
 
+    # Strip whitespace from URL if provided
+    if nightscout_url:
+        nightscout_url = nightscout_url.strip()
+        data["nightscout_url"] = nightscout_url
+
+    # Validate: if one is set, both must be set
+    if bool(nightscout_url) != bool(nightscout_api):
+        raise CannotConnect
+
     if nightscout_api and nightscout_url:
-        # Validate URL format
-        if not nightscout_url.startswith(("http://", "https://")):
+        # Validate URL format using urlparse
+        parsed = urlparse(nightscout_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
             raise CannotConnect
 
         uploader = NightscoutUploader(
@@ -53,7 +67,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             if not await uploader.reachServer():
                 raise CannotConnect
         finally:
-            await uploader.close()
+            try:
+                await uploader.close()
+            except Exception:
+                _LOGGER.warning("Failed to close Nightscout uploader during validation")
 
     return {"title": "Carelink"}
 

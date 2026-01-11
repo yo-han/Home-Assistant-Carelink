@@ -174,7 +174,7 @@ class CarelinkClient:
                 printdbg(f"__get_data() failed: request timeout - {error}")
             except httpx.RequestError as error:
                 printdbg(f"__get_data() failed: network error - {error}")
-            except (ValueError, json.JSONDecodeError) as error:
+            except (ValueError, KeyError, json.JSONDecodeError) as error:
                 printdbg(f"__get_data() failed: response error - {error}")
             else:
                 jsondata = json.loads(response.text)
