@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
+import shutil
 
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -86,6 +88,9 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
 
+# Old logindata.json location (before fix for read-only filesystems)
+LEGACY_AUTH_FILE = "custom_components/carelink/logindata.json"
+
 # Fields containing personally identifiable information that should be redacted from logs
 PII_FIELDS = {
     "firstName", "lastName", "username", "patientId", "conduitSerialNumber",
@@ -114,10 +119,46 @@ def convert_date_to_isodate(date):
     return datetime.fromisoformat(date_iso).replace(tzinfo=None)
 
 
+def _migrate_legacy_logindata(config_path: str, entry_id: str) -> None:
+    """Migrate logindata.json from old location to new entry-specific location.
+
+    Old location: custom_components/carelink/logindata.json (relative to config)
+    New location: {config_path}/carelink_logindata_{entry_id}.json
+    """
+    from .api import AUTH_FILE_PREFIX
+
+    old_path = os.path.join(config_path, LEGACY_AUTH_FILE)
+    new_filename = f"{AUTH_FILE_PREFIX}_{entry_id}.json"
+    new_path = os.path.join(config_path, new_filename)
+
+    # Only migrate if old file exists and new file doesn't
+    if os.path.exists(old_path) and not os.path.exists(new_path):
+        try:
+            shutil.copy2(old_path, new_path)
+            _LOGGER.info(
+                "Migrated logindata from %s to %s",
+                old_path,
+                new_path
+            )
+            # Remove old file after successful migration
+            os.remove(old_path)
+            _LOGGER.debug("Removed legacy logindata file: %s", old_path)
+        except OSError as error:
+            _LOGGER.warning(
+                "Failed to migrate logindata from %s to %s: %s",
+                old_path,
+                new_path,
+                error
+            )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up carelink from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
+
+    # Migrate logindata from old location if needed
+    _migrate_legacy_logindata(hass.config.path(), entry.entry_id)
 
     config = entry.data
 
@@ -127,7 +168,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config["cl_client_id"],
         config["cl_client_secret"],
         config["cl_mag_identifier"],
-        config["patientId"]
+        config["patientId"],
+        config_path=hass.config.path(),
+        entry_id=entry.entry_id
     )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {CLIENT: carelink_client}

@@ -1,0 +1,51 @@
+version: '3.8'
+
+# Local testing environment for Home Assistant Carelink integration
+# Usage:
+#   docker-compose -f docker-compose.test.yml up -d
+#   Open http://localhost:8123 to access Home Assistant
+#   docker-compose -f docker-compose.test.yml down -v  (to cleanup)
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: carelink-ha-test
+    volumes:
+      # Mount the custom component
+      - ./custom_components/carelink:/config/custom_components/carelink:ro
+      # Mount test config directory (created on first run)
+      - ./test_config:/config
+    ports:
+      - "8123:8123"
+    environment:
+      - TZ=Europe/Amsterdam
+    restart: unless-stopped
+
+  # Optional: Local Nightscout instance for testing the uploader
+  # Uncomment the sections below to enable
+  #
+  # nightscout:
+  #   image: nightscout/cgm-remote-monitor:latest
+  #   container_name: carelink-nightscout-test
+  #   ports:
+  #     - "1337:1337"
+  #   environment:
+  #     - NODE_ENV=production
+  #     - TZ=Europe/Amsterdam
+  #     - MONGO_CONNECTION=mongodb://mongo:27017/nightscout
+  #     - API_SECRET=testingapisecret123
+  #     - DISPLAY_UNITS=mmol
+  #     - ENABLE=careportal rawbg iob cob openaps pump bwg cage sage iage bage basal ar2 errorcodes
+  #   depends_on:
+  #     - mongo
+  #   restart: unless-stopped
+  #
+  # mongo:
+  #   image: mongo:4.4
+  #   container_name: carelink-mongo-test
+  #   volumes:
+  #     - mongo_data:/data/db
+  #   restart: unless-stopped
+
+# volumes:
+#   mongo_data:

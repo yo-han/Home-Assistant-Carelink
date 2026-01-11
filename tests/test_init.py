@@ -423,3 +423,74 @@ class TestGetLastMarker:
 
         # Should return the 18:00 marker (most recent)
         assert result["ATTRS"]["amount"] == 60
+
+
+class TestMigrateLegacyLogindata:
+    """Tests for the _migrate_legacy_logindata function."""
+
+    def test_migrate_legacy_file_exists(self, tmp_path):
+        """Test migration when legacy file exists and new file doesn't."""
+        from custom_components.carelink import _migrate_legacy_logindata, LEGACY_AUTH_FILE
+        from custom_components.carelink.api import AUTH_FILE_PREFIX
+
+        # Create the legacy directory structure
+        legacy_dir = tmp_path / "custom_components" / "carelink"
+        legacy_dir.mkdir(parents=True)
+        legacy_file = legacy_dir / "logindata.json"
+        legacy_file.write_text('{"access_token": "test123"}')
+
+        entry_id = "test_entry_123"
+        new_filename = f"{AUTH_FILE_PREFIX}_{entry_id}.json"
+
+        # Run migration
+        _migrate_legacy_logindata(str(tmp_path), entry_id)
+
+        # Check new file exists with correct content
+        new_file = tmp_path / new_filename
+        assert new_file.exists()
+        assert new_file.read_text() == '{"access_token": "test123"}'
+
+        # Check legacy file is removed
+        assert not legacy_file.exists()
+
+    def test_migrate_no_legacy_file(self, tmp_path):
+        """Test migration does nothing when legacy file doesn't exist."""
+        from custom_components.carelink import _migrate_legacy_logindata
+        from custom_components.carelink.api import AUTH_FILE_PREFIX
+
+        entry_id = "test_entry_456"
+        new_filename = f"{AUTH_FILE_PREFIX}_{entry_id}.json"
+
+        # Run migration (no legacy file exists)
+        _migrate_legacy_logindata(str(tmp_path), entry_id)
+
+        # Check no new file was created
+        new_file = tmp_path / new_filename
+        assert not new_file.exists()
+
+    def test_migrate_new_file_already_exists(self, tmp_path):
+        """Test migration skips if new file already exists."""
+        from custom_components.carelink import _migrate_legacy_logindata, LEGACY_AUTH_FILE
+        from custom_components.carelink.api import AUTH_FILE_PREFIX
+
+        # Create the legacy directory structure and file
+        legacy_dir = tmp_path / "custom_components" / "carelink"
+        legacy_dir.mkdir(parents=True)
+        legacy_file = legacy_dir / "logindata.json"
+        legacy_file.write_text('{"access_token": "old_token"}')
+
+        entry_id = "test_entry_789"
+        new_filename = f"{AUTH_FILE_PREFIX}_{entry_id}.json"
+
+        # Create the new file already
+        new_file = tmp_path / new_filename
+        new_file.write_text('{"access_token": "new_token"}')
+
+        # Run migration
+        _migrate_legacy_logindata(str(tmp_path), entry_id)
+
+        # Check new file wasn't overwritten
+        assert new_file.read_text() == '{"access_token": "new_token"}'
+
+        # Check legacy file still exists (not removed since migration was skipped)
+        assert legacy_file.exists()

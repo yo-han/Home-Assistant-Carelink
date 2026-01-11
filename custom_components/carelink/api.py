@@ -32,7 +32,7 @@ VERSION = "0.4"
 
 # Constants
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
-CON_CONTEXT_AUTH = "custom_components/carelink/logindata.json"
+AUTH_FILE_PREFIX = "carelink_logindata"
 CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6"
 AUTH_ERROR_CODES = [401,403]
 
@@ -58,7 +58,9 @@ class CarelinkClient:
         client_id,
         client_secret,
         mag_identifier,
-        carelink_patient_id
+        carelink_patient_id,
+        config_path=None,
+        entry_id=None
     ):
 
         # Auth info
@@ -74,6 +76,17 @@ class CarelinkClient:
 
         # Session info
         self.__carelink_patient_id = carelink_patient_id
+
+        # Config path for storing auth file (unique per entry_id to support multiple instances)
+        if entry_id:
+            auth_filename = f"{AUTH_FILE_PREFIX}_{entry_id}.json"
+        else:
+            auth_filename = f"{AUTH_FILE_PREFIX}.json"
+
+        if config_path:
+            self.__auth_file_path = os.path.join(config_path, auth_filename)
+        else:
+            self.__auth_file_path = auth_filename
         self.__session_user = None
         self.__session_username = None
         self.__session_config = None
@@ -303,7 +316,7 @@ class CarelinkClient:
     async def __execute_init_procedure(self):
         printdbg("__execute_init_procedure()")
         if not self.__initialized:
-            self.__token_data = await self._process_token_file(CON_CONTEXT_AUTH)
+            self.__token_data = await self._process_token_file(self.__auth_file_path)
 
             if self.__token_data is None:
                 return
@@ -334,7 +347,7 @@ class CarelinkClient:
                         if await self.__refresh_token(self.__session_config, self.__token_data):
                             if await self._get_access_token_payload(self.__token_data):
                                 printdbg(f"New token is valid until {self.__auth_token_validto}")
-                                await self._write_token_file(self.__token_data, CON_CONTEXT_AUTH)
+                                await self._write_token_file(self.__token_data, self.__auth_file_path)
                     except Exception as e:
                         printdbg(e)
                     return
@@ -395,7 +408,7 @@ class CarelinkClient:
             if await self.__refresh_token(self.__session_config, self.__token_data):
                 if await self._get_access_token_payload(self.__token_data):
                     printdbg(f"New token is valid until {self.__auth_token_validto}")
-                    await self._write_token_file(self.__token_data, CON_CONTEXT_AUTH)
+                    await self._write_token_file(self.__token_data, self.__auth_file_path)
         return True
 
     # Wrapper for data retrival methods
