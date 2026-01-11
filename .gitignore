@@ -156,3 +156,5 @@ config/**
 !config/configuration.yaml
 /custom_components/carelink/logindata.json
 /utils/logindata.json
+venv
+.claude

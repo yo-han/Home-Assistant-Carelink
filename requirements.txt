@@ -2,3 +2,6 @@ colorlog==6.7.0
 homeassistant==2024.1.6
 pip>=25.3
 ruff==0.0.292
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
