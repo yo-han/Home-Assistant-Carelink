@@ -237,13 +237,21 @@ class TestGetSg:
 
 
 class TestGetActiveNotification:
-    """Tests for the get_active_notification function."""
+    """Tests for the get_active_notification function.
+
+    NOTE: There appears to be a bug in get_active_notification() where it returns
+    None when clearedNotifications is empty, but logically an alarm with no
+    cleared notifications should be considered active (returning last_alarm).
+    These tests document the current behavior, not necessarily the correct behavior.
+    """
 
     def test_active_notification_empty_cleared_list(self):
         """Test behavior with empty cleared notifications list.
 
-        Note: When clearedNotifications is empty, the function returns None
-        because the if block is not entered and there's no explicit return.
+        BUG: When clearedNotifications is empty, the function returns None
+        because the `if filtered_array:` block is not entered and there's no
+        explicit return statement. Logically, if no notifications have been
+        cleared, the alarm should still be active (return last_alarm).
         """
         last_alarm = {
             "dateTime": "2024-01-15T12:00:00.000Z",
@@ -255,6 +263,7 @@ class TestGetActiveNotification:
         result = get_active_notification(last_alarm, notifications)
 
         # Current behavior: returns None when clearedNotifications is empty
+        # Expected behavior: should return last_alarm (alarm is active)
         assert result is None
 
     def test_notification_is_cleared(self):

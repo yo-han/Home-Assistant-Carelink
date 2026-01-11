@@ -206,6 +206,135 @@ class TestNightscoutDataTransformation:
         assert trend == "null"
         assert delta == "null"
 
+    # Boundary tests for trend thresholds
+    def test_ns_trend_triple_up(self, mock_nightscout_uploader):
+        """Test trend for delta > 30 (TripleUp)."""
+        present = {"sg": 131}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        assert trend == "TripleUp"
+        assert delta == 31
+
+    def test_ns_trend_triple_down(self, mock_nightscout_uploader):
+        """Test trend for delta < -30 (TripleDown)."""
+        present = {"sg": 69}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        assert trend == "TripleDown"
+        assert delta == -31
+
+    def test_ns_trend_boundary_double_up_at_30(self, mock_nightscout_uploader):
+        """Test trend at boundary delta=30 (should be DoubleUp, not TripleUp)."""
+        present = {"sg": 130}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=30 is NOT > 30, so should be DoubleUp (delta > 15)
+        assert trend == "DoubleUp"
+        assert delta == 30
+
+    def test_ns_trend_boundary_double_down_at_minus_30(self, mock_nightscout_uploader):
+        """Test trend at boundary delta=-30 (should be DoubleDown, not TripleDown)."""
+        present = {"sg": 70}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=-30 is NOT < -30, so should be DoubleDown (delta < -15)
+        assert trend == "DoubleDown"
+        assert delta == -30
+
+    def test_ns_trend_boundary_single_up_at_15(self, mock_nightscout_uploader):
+        """Test trend at boundary delta=15 (should be SingleUp, not DoubleUp)."""
+        present = {"sg": 115}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=15 is NOT > 15, so should be SingleUp (delta > 5)
+        assert trend == "SingleUp"
+        assert delta == 15
+
+    def test_ns_trend_boundary_single_down_at_minus_15(self, mock_nightscout_uploader):
+        """Test trend at boundary delta=-15 (should be SingleDown, not DoubleDown)."""
+        present = {"sg": 85}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=-15 is NOT < -15, so should be SingleDown (delta < -5)
+        assert trend == "SingleDown"
+        assert delta == -15
+
+    def test_ns_trend_forty_five_up(self, mock_nightscout_uploader):
+        """Test trend for small positive delta (FortyFiveUp)."""
+        present = {"sg": 103}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=3 is > 0 but not > 5, so FortyFiveUp
+        assert trend == "FortyFiveUp"
+        assert delta == 3
+
+    def test_ns_trend_forty_five_down(self, mock_nightscout_uploader):
+        """Test trend for small negative delta (FortyFiveDown)."""
+        present = {"sg": 97}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=-3 is < 0 but not < -5, so FortyFiveDown
+        assert trend == "FortyFiveDown"
+        assert delta == -3
+
+    def test_ns_trend_boundary_forty_five_up_at_5(self, mock_nightscout_uploader):
+        """Test trend at boundary delta=5 (should be FortyFiveUp, not SingleUp)."""
+        present = {"sg": 105}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=5 is NOT > 5, so should be FortyFiveUp (delta > 0)
+        assert trend == "FortyFiveUp"
+        assert delta == 5
+
+    def test_ns_trend_boundary_forty_five_down_at_minus_5(self, mock_nightscout_uploader):
+        """Test trend at boundary delta=-5 (should be FortyFiveDown, not SingleDown)."""
+        present = {"sg": 95}
+        past = {"sg": 100}
+
+        trend, delta = mock_nightscout_uploader._NightscoutUploader__ns_trend(
+            present, past
+        )
+
+        # delta=-5 is NOT < -5, so should be FortyFiveDown (delta < 0)
+        assert trend == "FortyFiveDown"
+        assert delta == -5
+
     def test_get_note(self, mock_nightscout_uploader):
         """Test note formatting."""
         result = mock_nightscout_uploader._NightscoutUploader__getNote(

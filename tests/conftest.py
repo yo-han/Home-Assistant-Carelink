@@ -1,59 +1,86 @@
 """Fixtures for Carelink tests."""
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
 
-# Mock homeassistant modules before importing our code
-mock_modules = {
-    'homeassistant': MagicMock(),
-    'homeassistant.components': MagicMock(),
-    'homeassistant.components.sensor': MagicMock(),
-    'homeassistant.components.binary_sensor': MagicMock(),
-    'homeassistant.config_entries': MagicMock(),
-    'homeassistant.const': MagicMock(),
-    'homeassistant.core': MagicMock(),
-    'homeassistant.data_entry_flow': MagicMock(),
-    'homeassistant.exceptions': MagicMock(),
-    'homeassistant.helpers': MagicMock(),
-    'homeassistant.helpers.entity': MagicMock(),
-    'homeassistant.helpers.entity_platform': MagicMock(),
-    'homeassistant.helpers.update_coordinator': MagicMock(),
-    'homeassistant.util': MagicMock(),
-    'homeassistant.util.dt': MagicMock(),
-}
+def _create_mock_modules() -> dict[str, MagicMock]:
+    """Create mock modules for homeassistant dependencies."""
+    mock_modules = {
+        'homeassistant': MagicMock(),
+        'homeassistant.components': MagicMock(),
+        'homeassistant.components.sensor': MagicMock(),
+        'homeassistant.components.binary_sensor': MagicMock(),
+        'homeassistant.config_entries': MagicMock(),
+        'homeassistant.const': MagicMock(),
+        'homeassistant.core': MagicMock(),
+        'homeassistant.data_entry_flow': MagicMock(),
+        'homeassistant.exceptions': MagicMock(),
+        'homeassistant.helpers': MagicMock(),
+        'homeassistant.helpers.entity': MagicMock(),
+        'homeassistant.helpers.entity_platform': MagicMock(),
+        'homeassistant.helpers.update_coordinator': MagicMock(),
+        'homeassistant.util': MagicMock(),
+        'homeassistant.util.dt': MagicMock(),
+    }
 
-# Set up Platform enum mock
-mock_modules['homeassistant.const'].Platform = MagicMock()
-mock_modules['homeassistant.const'].Platform.SENSOR = 'sensor'
-mock_modules['homeassistant.const'].Platform.BINARY_SENSOR = 'binary_sensor'
+    # Set up Platform enum mock
+    mock_modules['homeassistant.const'].Platform = MagicMock()
+    mock_modules['homeassistant.const'].Platform.SENSOR = 'sensor'
+    mock_modules['homeassistant.const'].Platform.BINARY_SENSOR = 'binary_sensor'
 
-# Set up default timezone mock
-mock_modules['homeassistant.util.dt'].DEFAULT_TIME_ZONE = 'UTC'
+    # Set up default timezone mock
+    mock_modules['homeassistant.util.dt'].DEFAULT_TIME_ZONE = 'UTC'
 
-# Set up HomeAssistantError mock
-class MockHomeAssistantError(Exception):
-    """Mock HomeAssistant error."""
-    pass
+    # Set up HomeAssistantError mock
+    class MockHomeAssistantError(Exception):
+        """Mock HomeAssistant error."""
+        pass
 
-mock_modules['homeassistant.exceptions'].HomeAssistantError = MockHomeAssistantError
+    mock_modules['homeassistant.exceptions'].HomeAssistantError = MockHomeAssistantError
 
-# Set up FlowResultType mock
-mock_modules['homeassistant.data_entry_flow'].FlowResultType = MagicMock()
-mock_modules['homeassistant.data_entry_flow'].FlowResultType.FORM = 'form'
-mock_modules['homeassistant.data_entry_flow'].FlowResultType.CREATE_ENTRY = 'create_entry'
+    # Set up FlowResultType mock
+    mock_modules['homeassistant.data_entry_flow'].FlowResultType = MagicMock()
+    mock_modules['homeassistant.data_entry_flow'].FlowResultType.FORM = 'form'
+    mock_modules['homeassistant.data_entry_flow'].FlowResultType.CREATE_ENTRY = 'create_entry'
 
-sys.modules.update(mock_modules)
+    return mock_modules
+
+
+# Store original modules for cleanup
+_original_modules: dict[str, Any] = {}
+_mock_modules = _create_mock_modules()
+
+# Save originals and apply mocks
+for key in _mock_modules:
+    _original_modules[key] = sys.modules.get(key)
+sys.modules.update(_mock_modules)
 
 # Now we can import our modules
 from custom_components.carelink.api import CarelinkClient
 from custom_components.carelink.nightscout_uploader import NightscoutUploader
 
 
+def pytest_sessionfinish(session, exitstatus):
+    """Clean up sys.modules after test session."""
+    for key, original in _original_modules.items():
+        if original is None:
+            sys.modules.pop(key, None)
+        else:
+            sys.modules[key] = original
+
+
 @pytest.fixture
-def mock_token_data():
-    """Return mock token data."""
+def mock_token_data() -> dict[str, str]:
+    """Return mock token data.
+
+    Note: The JWT token contains a hardcoded expiration (exp: 9999999999 = Nov 2286)
+    to ensure tests don't fail due to token expiration. The payload contains:
+    - exp: 9999999999
+    - token_details: {"country": "NL", "preferred_username": "testuser"}
+    """
     return {
         "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjk5OTk5OTk5OTksInRva2VuX2RldGFpbHMiOnsiY291bnRyeSI6Ik5MIiwicHJlZmVycmVkX3VzZXJuYW1lIjoidGVzdHVzZXIifX0.fake",
         "refresh_token": "mock_refresh_token",
@@ -64,7 +91,7 @@ def mock_token_data():
 
 
 @pytest.fixture
-def mock_recent_data():
+def mock_recent_data() -> dict[str, Any]:
     """Return mock recent data from Carelink API."""
     return {
         "clientTimeZoneName": "Europe/Amsterdam",
@@ -134,8 +161,8 @@ def mock_recent_data():
 
 
 @pytest.fixture
-def mock_carelink_client(mock_token_data):
-    """Return a mock CarelinkClient."""
+def mock_carelink_client(mock_token_data: dict[str, str]) -> CarelinkClient:
+    """Return a CarelinkClient instance for testing."""
     client = CarelinkClient(
         carelink_refresh_token=mock_token_data["refresh_token"],
         carelink_token=mock_token_data["access_token"],
@@ -148,20 +175,10 @@ def mock_carelink_client(mock_token_data):
 
 
 @pytest.fixture
-def mock_nightscout_uploader():
-    """Return a mock NightscoutUploader."""
+def mock_nightscout_uploader() -> NightscoutUploader:
+    """Return a NightscoutUploader instance for testing."""
     uploader = NightscoutUploader(
         nightscout_url="https://nightscout.example.com",
         nightscout_secret="mock_api_secret",
     )
     return uploader
-
-
-@pytest.fixture
-def mock_httpx_response():
-    """Return a mock httpx response."""
-    response = MagicMock()
-    response.status_code = 200
-    response.json.return_value = {}
-    response.text = "{}"
-    return response

@@ -2,6 +2,7 @@
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from custom_components.carelink.api import CarelinkClient
@@ -72,6 +73,54 @@ class TestCarelinkClient:
 
         assert response.status_code == 200
         mock_client.post.assert_called_once()
+
+    async def test_fetch_async_timeout(self, mock_carelink_client):
+        """Test fetch_async handles timeout exception."""
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("Connection timed out"))
+        mock_carelink_client._async_client = mock_client
+
+        with pytest.raises(httpx.TimeoutException):
+            await mock_carelink_client.fetch_async(
+                "https://test.com", headers={"Authorization": "Bearer test"}
+            )
+
+    async def test_fetch_async_request_error(self, mock_carelink_client):
+        """Test fetch_async handles request error."""
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+        mock_carelink_client._async_client = mock_client
+
+        with pytest.raises(httpx.RequestError):
+            await mock_carelink_client.fetch_async(
+                "https://test.com", headers={"Authorization": "Bearer test"}
+            )
+
+    async def test_post_async_timeout(self, mock_carelink_client):
+        """Test post_async handles timeout exception."""
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("Connection timed out"))
+        mock_carelink_client._async_client = mock_client
+
+        with pytest.raises(httpx.TimeoutException):
+            await mock_carelink_client.post_async(
+                "https://test.com",
+                headers={"Content-Type": "application/json"},
+                data={"key": "value"},
+            )
+
+    async def test_post_async_request_error(self, mock_carelink_client):
+        """Test post_async handles request error."""
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+        mock_carelink_client._async_client = mock_client
+
+        with pytest.raises(httpx.RequestError):
+            await mock_carelink_client.post_async(
+                "https://test.com",
+                headers={"Content-Type": "application/json"},
+                data={"key": "value"},
+            )
 
 
 class TestTokenProcessing:
@@ -176,5 +225,19 @@ class TestProcessTokenFile:
             f.write("not valid json {{{")
 
         result = await mock_carelink_client._process_token_file(str(token_file))
+
+        assert result is None
+
+    async def test_process_token_file_permission_error(self, mock_carelink_client, tmp_path):
+        """Test processing token file with permission error (OSError)."""
+        token_file = tmp_path / "token.json"
+
+        # Client has no static config set
+        mock_carelink_client._CarelinkClient__carelink_access_token = None
+        mock_carelink_client._CarelinkClient__carelink_refresh_token = None
+        mock_carelink_client._CarelinkClient__client_id = None
+
+        with patch("builtins.open", side_effect=OSError("Permission denied")):
+            result = await mock_carelink_client._process_token_file(str(token_file))
 
         assert result is None
