@@ -67,8 +67,8 @@ class CarelinkClient:
         self.__client_id = client_id
         self.__client_secret = client_secret
         self.__mag_identifier = mag_identifier
-        self.__tokenData = None
-        self.__accessTokenPayload = None
+        self.__token_data = None
+        self.__access_token_payload = None
         # helper token data
         self.__auth_token_validto = None
 
@@ -143,9 +143,9 @@ class CarelinkClient:
             try:
                 # Add header
                 headers = self.__common_headers
-                if "mag-identifier" in self.__tokenData:
-                    headers["mag-identifier"] = self.__tokenData["mag-identifier"]
-                headers["Authorization"] = "Bearer " + self.__tokenData["access_token"]
+                if "mag-identifier" in self.__token_data:
+                    headers["mag-identifier"] = self.__token_data["mag-identifier"]
+                headers["Authorization"] = "Bearer " + self.__token_data["access_token"]
                 if data is None:
                     headers["Accept"] = "application/json, text/plain, */*"
                     headers["Content-Type"] = "application/json; charset=utf-8"
@@ -159,9 +159,11 @@ class CarelinkClient:
                             + str(response.status_code)
                         )
                 else:
-                    headers[
-                        "Accept"
-                    ] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+                    headers["Accept"] = (
+                        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+                        "image/avif,image/webp,image/apng,*/*;q=0.8,"
+                        "application/signed-exchange;v=b3;q=0.9"
+                    )
                     headers["Content-Type"] = "application/x-www-form-urlencoded"
                     response = await self.post_async(url, headers=headers, data=data)
                     self.__last_response_code = response.status_code
@@ -181,7 +183,7 @@ class CarelinkClient:
 
         return jsondata
 
-    def __selectPatient(self, patients):
+    def __select_patient(self, patients):
         patient = None
         if patients is not None:
             for p in patients:
@@ -190,8 +192,8 @@ class CarelinkClient:
                     break
         return patient
 
-    async def __getPatients(self):
-        printdbg("__getPatients()")
+    async def __get_patients(self):
+        printdbg("__get_patients()")
         url = self.__session_config["baseUrlCareLink"] + "/links/patients"
         return await self.__get_data(
             url, None, None
@@ -225,15 +227,15 @@ class CarelinkClient:
                 except KeyError:
                     pass
             if region is None:
-                raise Exception("ERROR: country code %s is not supported" % self.__session_country)
-            printdbg("User region: %s" % region)
+                raise ValueError(f"ERROR: country code {self.__session_country} is not supported")
+            printdbg(f"User region: {region}")
 
             for c in data["CP"]:
                 if c["region"] == region:
                     config = c
                     break
             if config is None:
-                raise Exception(f"ERROR: failed to get config base urls for region {region}")
+                raise ValueError(f"ERROR: failed to get config base urls for region {region}")
 
             sso_configuration_key = config["UseSSOConfiguration"]
 
@@ -245,9 +247,10 @@ class CarelinkClient:
                     + str(resp.status_code)
                 )
             sso_config = resp.json()
-            sso_base_url = "https://%s:%d/%s" % (sso_config["server"]["hostname"],
-                                    sso_config["server"]["port"],
-                                    sso_config["server"]["prefix"])
+            hostname = sso_config["server"]["hostname"]
+            port = sso_config["server"]["port"]
+            prefix = sso_config["server"]["prefix"]
+            sso_base_url = f"https://{hostname}:{port}/{prefix}"
             if sso_base_url.endswith('/'):
                 sso_base_url = sso_base_url[:-1] # remove trailing slash if prefix is empty
             token_url = sso_base_url + sso_config["system_endpoints"]["token_endpoint_path"]
@@ -297,31 +300,32 @@ class CarelinkClient:
             printdbg(f"Malformed access token: {error}")
             return None
         # Save expiration time
-        self.__auth_token_validto = datetime.fromtimestamp(token_validto, tz=timezone.utc).strftime('%a %b %d %H:%M:%S UTC %Y')
+        token_dt = datetime.fromtimestamp(token_validto, tz=timezone.utc)
+        self.__auth_token_validto = token_dt.strftime('%a %b %d %H:%M:%S UTC %Y')
         return payload_json
 
     async def __execute_init_procedure(self):
         printdbg("__execute_init_procedure()")
         if not self.__initialized:
-            self.__tokenData = await self._process_token_file(CON_CONTEXT_AUTH)
+            self.__token_data = await self._process_token_file(CON_CONTEXT_AUTH)
 
-            if self.__tokenData is None:
+            if self.__token_data is None:
                 return
-            self.__accessTokenPayload = await self._get_access_token_payload(self.__tokenData)
-            if self.__accessTokenPayload is None:
+            self.__access_token_payload = await self._get_access_token_payload(self.__token_data)
+            if self.__access_token_payload is None:
                 return
             try:
-                self.__session_country = self.__accessTokenPayload["token_details"]["country"]
+                self.__session_country = self.__access_token_payload["token_details"]["country"]
 
                 self.__session_config = await self.__get_config_settings()
 
-                self.__session_username = self.__accessTokenPayload["token_details"]["preferred_username"]
+                self.__session_username = self.__access_token_payload["token_details"]["preferred_username"]
                 self.__session_user = await self.__get_my_user()
 
                 if self.__session_user["role"] in ["CARE_PARTNER","CARE_PARTNER_OUS"]:
                     if not self.__carelink_patient_id:
-                        sessionPatients = await self.__getPatients()
-                        patient = self.__selectPatient(sessionPatients)
+                        session_patients = await self.__get_patients()
+                        patient = self.__select_patient(session_patients)
                         if patient:
                             self.__carelink_patient_id = patient["username"]
                             printdbg("Found patient [REDACTED] [REDACTED] ([REDACTED])")
@@ -331,18 +335,18 @@ class CarelinkClient:
                 printdbg(f"__execute_init_procedure() failed: exception {error}")
                 if self.__last_response_code in AUTH_ERROR_CODES:
                     try:
-                        if await self.__refreshToken(self.__session_config, self.__tokenData):
-                            if await self._get_access_token_payload(self.__tokenData):
-                                printdbg("New token is valid until " + self.__auth_token_validto)
-                                await self._write_token_file(self.__tokenData, CON_CONTEXT_AUTH)
+                        if await self.__refresh_token(self.__session_config, self.__token_data):
+                            if await self._get_access_token_payload(self.__token_data):
+                                printdbg(f"New token is valid until {self.__auth_token_validto}")
+                                await self._write_token_file(self.__token_data, CON_CONTEXT_AUTH)
                     except Exception as e:
                         printdbg(e)
                     return
             self.__initialized = True
         return
 
-    async def __refreshToken(self, config, token_data):
-        printdbg("__refreshToken")
+    async def __refresh_token(self, config, token_data):
+        printdbg("__refresh_token")
         success = False
         token_url = config["token_url"]
 
@@ -363,11 +367,11 @@ class CarelinkClient:
             if self.__last_response_code == 200:
                 printdbg("Refreshed token successfully")
                 response_data = response.json()
-                self.__tokenData["access_token"] = response_data["access_token"]
-                self.__tokenData["refresh_token"] = response_data["refresh_token"]
+                self.__token_data["access_token"] = response_data["access_token"]
+                self.__token_data["refresh_token"] = response_data["refresh_token"]
                 success = True
             else:
-                raise ValueError("Failed to refresh token (%d)" % self.__last_response_code)
+                raise ValueError(f"Failed to refresh token ({self.__last_response_code})")
         except httpx.TimeoutException as error:
             printdbg(f"Token refresh failed: request timeout - {error}")
             success = False
@@ -381,18 +385,21 @@ class CarelinkClient:
 
     async def __handle_authorization_token(self):
         printdbg("__handle_authorization_token()")
-        if await self._get_access_token_payload(self.__tokenData):
+        if await self._get_access_token_payload(self.__token_data):
             auth_token_validto = self.__auth_token_validto
         else:
             printdbg("No valid token")
             return False
 
-        if (datetime.strptime(auth_token_validto, '%a %b %d %H:%M:%S UTC %Y').replace(tzinfo=timezone.utc) - datetime.now(tz=timezone.utc)) < timedelta(seconds=AUTH_EXPIRE_DEADLINE_MINUTES*60):
-            printdbg("Current token is valid until " + self.__auth_token_validto)
-            if await self.__refreshToken(self.__session_config, self.__tokenData):
-                if await self._get_access_token_payload(self.__tokenData):
-                    printdbg("New token is valid until " + self.__auth_token_validto)
-                    await self._write_token_file(self.__tokenData, CON_CONTEXT_AUTH)
+        token_time = datetime.strptime(auth_token_validto, '%a %b %d %H:%M:%S UTC %Y')
+        token_time = token_time.replace(tzinfo=timezone.utc)
+        time_remaining = token_time - datetime.now(tz=timezone.utc)
+        if time_remaining < timedelta(seconds=AUTH_EXPIRE_DEADLINE_MINUTES * 60):
+            printdbg(f"Current token is valid until {self.__auth_token_validto}")
+            if await self.__refresh_token(self.__session_config, self.__token_data):
+                if await self._get_access_token_payload(self.__token_data):
+                    printdbg(f"New token is valid until {self.__auth_token_validto}")
+                    await self._write_token_file(self.__token_data, CON_CONTEXT_AUTH)
         return True
 
     # Wrapper for data retrival methods
@@ -414,8 +421,7 @@ class CarelinkClient:
                 role,
                 self.__carelink_patient_id,
             )
-        else:
-            return None
+        return None
 
     async def _write_token_file(self, obj, filename):
         printdbg("_write_token_file()")
@@ -443,9 +449,9 @@ class CarelinkClient:
             cfg_complete = True
             if token_data is not None:
                 required_fields = ["access_token", "refresh_token", "client_id"]
-                for f in required_fields:
-                    if f not in token_data:
-                        printdbg("ERROR: field %s is missing from token file" % f)
+                for field in required_fields:
+                    if field not in token_data:
+                        printdbg(f"ERROR: field {field} is missing from token file")
                         cfg_complete = False
             if not cfg_complete:
                 token_data = None

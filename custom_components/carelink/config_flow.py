@@ -138,7 +138,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle reconfiguration of the integration."""
         errors = {}
-        
+
         # Get the current configuration entry
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
 

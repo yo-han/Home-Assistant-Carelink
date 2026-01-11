@@ -340,12 +340,12 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         else:
             data[SENSOR_KEY_ACTIVE_BASAL_PATTERN] = UNAVAILABLE
 
-        averageSGRaw = recent_data.setdefault("averageSG", UNAVAILABLE)
-        if averageSGRaw is not None:
+        average_sg_raw = recent_data.setdefault("averageSG", UNAVAILABLE)
+        if average_sg_raw is not None:
             data[SENSOR_KEY_AVG_GLUCOSE_MMOL] = float(
-                round(averageSGRaw * 0.0555, 2)
+                round(average_sg_raw * 0.0555, 2)
             )
-            data[SENSOR_KEY_AVG_GLUCOSE_MGDL] = averageSGRaw
+            data[SENSOR_KEY_AVG_GLUCOSE_MGDL] = average_sg_raw
         else:
             data[SENSOR_KEY_AVG_GLUCOSE_MMOL] = UNAVAILABLE
             data[SENSOR_KEY_AVG_GLUCOSE_MGDL] = UNAVAILABLE
