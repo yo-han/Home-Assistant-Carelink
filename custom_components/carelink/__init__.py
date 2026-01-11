@@ -128,7 +128,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config["cl_client_secret"],
         config["cl_mag_identifier"],
         config["patientId"],
-        config_path=hass.config.path()
+        config_path=hass.config.path(),
+        entry_id=entry.entry_id
     )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {CLIENT: carelink_client}

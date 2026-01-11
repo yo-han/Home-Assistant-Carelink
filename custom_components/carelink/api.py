@@ -32,7 +32,7 @@ VERSION = "0.4"
 
 # Constants
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
-DEFAULT_AUTH_FILE = "carelink_logindata.json"
+AUTH_FILE_PREFIX = "carelink_logindata"
 CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6"
 AUTH_ERROR_CODES = [401,403]
 
@@ -59,7 +59,8 @@ class CarelinkClient:
         client_secret,
         mag_identifier,
         carelink_patient_id,
-        config_path=None
+        config_path=None,
+        entry_id=None
     ):
 
         # Auth info
@@ -76,11 +77,16 @@ class CarelinkClient:
         # Session info
         self.__carelink_patient_id = carelink_patient_id
 
-        # Config path for storing auth file
-        if config_path:
-            self.__auth_file_path = os.path.join(config_path, DEFAULT_AUTH_FILE)
+        # Config path for storing auth file (unique per entry_id to support multiple instances)
+        if entry_id:
+            auth_filename = f"{AUTH_FILE_PREFIX}_{entry_id}.json"
         else:
-            self.__auth_file_path = DEFAULT_AUTH_FILE
+            auth_filename = f"{AUTH_FILE_PREFIX}.json"
+
+        if config_path:
+            self.__auth_file_path = os.path.join(config_path, auth_filename)
+        else:
+            self.__auth_file_path = auth_filename
         self.__session_user = None
         self.__session_username = None
         self.__session_config = None
