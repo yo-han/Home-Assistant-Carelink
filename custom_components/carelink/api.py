@@ -155,8 +155,7 @@ class CarelinkClient:
                     self.__last_response_code = response.status_code
                     if not response.status_code == 200:
                         raise ValueError(
-                            "__get_data() session get response is not OK"
-                            + str(response.status_code)
+                            f"__get_data() session response is not OK: {response.status_code}"
                         )
                 else:
                     headers["Accept"] = (
@@ -169,8 +168,7 @@ class CarelinkClient:
                     self.__last_response_code = response.status_code
                     if not response.status_code == 200:
                         raise ValueError(
-                            "__get_data() session get response is not OK"
-                            + str(response.status_code)
+                            f"__get_data() session response is not OK: {response.status_code}"
                         )
             except httpx.TimeoutException as error:
                 printdbg(f"__get_data() failed: request timeout - {error}")
@@ -213,8 +211,7 @@ class CarelinkClient:
             self.__last_response_code = resp.status_code
             if not resp.status_code == 200:
                 raise ValueError(
-                    "__get_config_settings() CARELINK_CONFIG_URL session get response is not OK"
-                    + str(resp.status_code)
+                    f"__get_config_settings() CARELINK_CONFIG_URL response is not OK: {resp.status_code}"
                 )
             data = resp.json()
             region = None
@@ -243,8 +240,7 @@ class CarelinkClient:
             self.__last_response_code = resp.status_code
             if not resp.status_code == 200:
                 raise ValueError(
-                    "__get_config_settings() SSOConfiguration session GET response is not OK"
-                    + str(resp.status_code)
+                    f"__get_config_settings() SSOConfiguration response is not OK: {resp.status_code}"
                 )
             sso_config = resp.json()
             hostname = sso_config["server"]["hostname"]
