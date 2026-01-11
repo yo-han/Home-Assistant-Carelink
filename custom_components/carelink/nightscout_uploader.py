@@ -259,6 +259,13 @@ class NightscoutUploader:
         result = list()
         for msg in raw:
             date, date_string=self.__getDataStringFromIso(msg["dateTime"], tz)
+            # Handle both numeric and string faultId values (Simplera sensor uses strings)
+            fault_id = msg.get('faultId')
+            try:
+                message_id = CARELINK_CODE_MAP.get(int(fault_id), "Unknown") if fault_id is not None else "Unknown"
+            except (ValueError, TypeError):
+                message_id = str(fault_id) if fault_id else "Unknown"
+
             if "additionalInfo" in msg and "sg" in msg["additionalInfo"] and int(msg["additionalInfo"]["sg"]) < 400:
                 result.append(dict(
                     timestamp=date,
@@ -267,7 +274,7 @@ class NightscoutUploader:
                     eventType="Note",
                     glucoseType="sensor",
                     glucose=float(msg["additionalInfo"]["sg"]),
-                    notes=self.__getNote(CARELINK_CODE_MAP.setdefault(int(msg['faultId']), "Unknown"))
+                    notes=self.__getNote(message_id)
                     ))
             else:
                 result.append(dict(
@@ -275,7 +282,7 @@ class NightscoutUploader:
                     enteredBy=NS_USER_AGENT,
                     created_at=date_string,
                     eventType="Note",
-                    notes=self.__getNote(CARELINK_CODE_MAP.setdefault(int(msg['faultId']), "Unknown"))
+                    notes=self.__getNote(message_id)
                     ))
         return result
 

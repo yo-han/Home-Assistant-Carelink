@@ -355,7 +355,16 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             date_time_local = convert_date_to_isodate(last_alarm["dateTime"])
 
             last_alarm["dateTime"]=date_time_local
-            last_alarm["messageId"] = CARELINK_CODE_MAP.setdefault(int(last_alarm["faultId"]), "UNKNOWN")
+            # Handle both numeric and string faultId values (Simplera sensor uses strings like 'alert.sg.threshold.low')
+            fault_id = last_alarm.get("faultId")
+            if fault_id is not None:
+                try:
+                    last_alarm["messageId"] = CARELINK_CODE_MAP.get(int(fault_id), "UNKNOWN")
+                except (ValueError, TypeError):
+                    # String faultId (e.g. 'alert.sg.threshold.low') - use as-is since it's already descriptive
+                    last_alarm["messageId"] = str(fault_id)
+            else:
+                last_alarm["messageId"] = "UNKNOWN"
             
             data[SENSOR_KEY_LAST_ALARM] = date_time_local.replace(tzinfo=timezone)
             data[SENSOR_KEY_LAST_ALARM_ATTRS] = last_alarm
