@@ -1,0 +1,24 @@
+# Home Assistant Test Configuration for Carelink Integration
+# This file is used for local testing only
+
+homeassistant:
+  name: Carelink Test
+  unit_system: metric
+  time_zone: Europe/Amsterdam
+  currency: EUR
+
+# Enable logging for debugging
+logger:
+  default: info
+  logs:
+    custom_components.carelink: debug
+
+# Enable the frontend
+frontend:
+
+# Enable configuration UI
+config:
+
+# Uncomment to enable Lovelace in YAML mode
+# lovelace:
+#   mode: yaml

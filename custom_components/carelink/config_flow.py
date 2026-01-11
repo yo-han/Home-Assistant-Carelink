@@ -30,7 +30,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         data.setdefault("cl_client_id", None),
         data.setdefault("cl_client_secret", None),
         data.setdefault("cl_mag_identifier", None),
-        data.setdefault("patientId", None)
+        data.setdefault("patientId", None),
+        config_path=hass.config.path()
     )
 
     try:

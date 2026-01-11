@@ -161,7 +161,7 @@ def mock_recent_data() -> dict[str, Any]:
 
 
 @pytest.fixture
-def mock_carelink_client(mock_token_data: dict[str, str]) -> CarelinkClient:
+def mock_carelink_client(mock_token_data: dict[str, str], tmp_path) -> CarelinkClient:
     """Return a CarelinkClient instance for testing."""
     client = CarelinkClient(
         carelink_refresh_token=mock_token_data["refresh_token"],
@@ -170,6 +170,7 @@ def mock_carelink_client(mock_token_data: dict[str, str]) -> CarelinkClient:
         client_secret=mock_token_data["client_secret"],
         mag_identifier=mock_token_data["mag-identifier"],
         carelink_patient_id="mock_patient_id",
+        config_path=str(tmp_path),
     )
     return client
 
