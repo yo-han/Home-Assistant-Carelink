@@ -55,6 +55,12 @@ class NightscoutUploader:
 
         return self._async_client
 
+    async def close(self):
+        """Close the HTTP client."""
+        if self._async_client:
+            await self._async_client.aclose()
+            self._async_client = None
+
     async def fetch_async(self, url, headers, params=None):
         """Perform an async get request."""
         response = await self.async_client.get(

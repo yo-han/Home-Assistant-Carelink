@@ -86,6 +86,26 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
 
+# Fields containing personally identifiable information that should be redacted from logs
+PII_FIELDS = {
+    "firstName", "lastName", "username", "patientId", "conduitSerialNumber",
+    "medicalDeviceSerialNumber", "systemId", "email", "phone"
+}
+
+
+def sanitize_for_logging(data, depth=0):
+    """Recursively sanitize data by redacting PII fields for safe logging."""
+    if depth > 10:  # Prevent infinite recursion
+        return "[MAX_DEPTH]"
+    if isinstance(data, dict):
+        return {
+            k: "[REDACTED]" if k in PII_FIELDS else sanitize_for_logging(v, depth + 1)
+            for k, v in data.items()
+        }
+    if isinstance(data, list):
+        return [sanitize_for_logging(item, depth + 1) for item in data]
+    return data
+
 
 def convert_date_to_isodate(date):
     date_iso = re.sub(r"\.\d{3}Z$", "+00:00", date)
@@ -122,9 +142,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
-        COORDINATOR: coordinator,
-    }
+    hass.data[DOMAIN][entry.entry_id][COORDINATOR] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -135,7 +153,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id)
+        # Close HTTP clients to prevent memory leaks
+        if CLIENT in entry_data:
+            await entry_data[CLIENT].close()
+        if UPLOADER in entry_data:
+            await entry_data[UPLOADER].close()
 
     return unload_ok
 
@@ -167,7 +190,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         if recent_data and 'patientData' in recent_data:
             recent_data=recent_data['patientData']
 
-        _LOGGER.debug("Before Data parsing %s", recent_data)
+        _LOGGER.debug("Before Data parsing %s", sanitize_for_logging(recent_data))
         try:
             if recent_data is not None and "clientTimeZoneName" in recent_data:
                 client_timezone = recent_data["clientTimeZoneName"]
@@ -455,7 +478,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
                 "medicalDeviceInformation"
             ].setdefault("systemId", UNAVAILABLE)
 
-        _LOGGER.debug("_async_update_data: %s", data)
+        _LOGGER.debug("_async_update_data: %s", sanitize_for_logging(data))
 
         return data
 
