@@ -23,9 +23,8 @@ class TestNightscoutUploaderInit:
             nightscout_secret="secret",
         )
         # URL should be lowercased and trailing slash removed
-        assert "https://nightscout.example.com" in str(
-            uploader._NightscoutUploader__nightscout_url
-        )
+        assert str(uploader._NightscoutUploader__nightscout_url) == "https://nightscout.example.com"
+
 
     def test_init_secret_hashing(self):
         """Test that secret is hashed with SHA1."""
