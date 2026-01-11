@@ -232,8 +232,14 @@ class NightscoutUploader:
                 response = await self.post_async(url, headers=self.__common_headers, data=json.dumps(entry))
                 if not response.status_code == 200:
                     raise ValueError("__set_data() session response is not OK " + str(response.status_code))
-        except Exception as error:
-            printdbg(f"__set_data() failed: exception {error}")
+        except httpx.TimeoutException as error:
+            printdbg(f"__set_data() failed: request timeout - {error}")
+            success = False
+        except httpx.RequestError as error:
+            printdbg(f"__set_data() failed: network error - {error}")
+            success = False
+        except ValueError as error:
+            printdbg(f"__set_data() failed: {error}")
             success = False
         return success
 

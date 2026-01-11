@@ -170,9 +170,12 @@ class CarelinkClient:
                             "__get_data() session get response is not OK"
                             + str(response.status_code)
                         )
-            # pylint: disable=broad-except
-            except Exception as error:
-                printdbg(f"__get_data() failed: exception {error}")
+            except httpx.TimeoutException as error:
+                printdbg(f"__get_data() failed: request timeout - {error}")
+            except httpx.RequestError as error:
+                printdbg(f"__get_data() failed: network error - {error}")
+            except (ValueError, json.JSONDecodeError) as error:
+                printdbg(f"__get_data() failed: response error - {error}")
             else:
                 jsondata = json.loads(response.text)
 
@@ -365,8 +368,14 @@ class CarelinkClient:
                 success = True
             else:
                 raise ValueError("Failed to refresh token (%d)" % self.__last_response_code)
-        except Exception as e:
-            printdbg(e)
+        except httpx.TimeoutException as error:
+            printdbg(f"Token refresh failed: request timeout - {error}")
+            success = False
+        except httpx.RequestError as error:
+            printdbg(f"Token refresh failed: network error - {error}")
+            success = False
+        except (ValueError, KeyError, json.JSONDecodeError) as error:
+            printdbg(f"Token refresh failed: {error}")
             success = False
         return success
 

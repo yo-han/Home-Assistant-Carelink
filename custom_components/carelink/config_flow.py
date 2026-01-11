@@ -32,18 +32,28 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         data.setdefault("patientId", None)
     )
 
-    if not await client.login():
-        raise InvalidAuth
+    try:
+        if not await client.login():
+            raise InvalidAuth
+    finally:
+        await client.close()
 
     nightscout_url = data.setdefault("nightscout_url", None)
     nightscout_api = data.setdefault("nightscout_api", None)
-    
+
     if nightscout_api and nightscout_url:
+        # Validate URL format
+        if not nightscout_url.startswith(("http://", "https://")):
+            raise CannotConnect
+
         uploader = NightscoutUploader(
             nightscout_url, nightscout_api
         )
-        if not await uploader.reachServer():
-            raise ConnectionError
+        try:
+            if not await uploader.reachServer():
+                raise CannotConnect
+        finally:
+            await uploader.close()
 
     return {"title": "Carelink"}
 

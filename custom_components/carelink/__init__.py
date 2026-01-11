@@ -89,7 +89,8 @@ _LOGGER = logging.getLogger(__name__)
 # Fields containing personally identifiable information that should be redacted from logs
 PII_FIELDS = {
     "firstName", "lastName", "username", "patientId", "conduitSerialNumber",
-    "medicalDeviceSerialNumber", "systemId", "email", "phone"
+    "medicalDeviceSerialNumber", "systemId", "email", "phone", "emailAddress",
+    "phoneNumber", "address", "dateOfBirth", "dob", "deviceSerialNumber",
 }
 
 
