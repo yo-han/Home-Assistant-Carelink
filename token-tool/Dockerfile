@@ -1,5 +1,8 @@
 FROM python:3.11-slim-bookworm
 
+LABEL org.opencontainers.image.source="https://github.com/yo-han/Home-Assistant-Carelink"
+LABEL org.opencontainers.image.description="Carelink Token Tool - obtain login tokens for Home Assistant Carelink integration"
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     firefox-esr \
@@ -29,12 +32,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
     chmod +x /usr/local/bin/geckodriver && \
     geckodriver --version
 
-# Install Python dependencies
+# Install Python dependencies (pinned versions for reproducibility)
 RUN pip install --no-cache-dir \
-    requests \
-    pyOpenSSL \
-    selenium-wire \
-    curlify \
+    requests==2.31.0 \
+    pyOpenSSL==24.0.0 \
+    selenium-wire==5.1.0 \
+    curlify==2.2.1 \
     blinker==1.7.0
 
 # Create app directory
@@ -56,5 +59,9 @@ EXPOSE 6080 8000
 
 # Set display
 ENV DISPLAY=:99
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:6080/ || exit 1
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

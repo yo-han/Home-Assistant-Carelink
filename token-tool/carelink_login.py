@@ -18,6 +18,7 @@ import re
 import string
 import uuid
 import secrets
+import time
 from time import sleep
 import sys
 
@@ -26,6 +27,11 @@ import OpenSSL
 from seleniumwire import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
+from selenium.common.exceptions import NoSuchElementException
+
+# Configuration
+REQUEST_TIMEOUT = 30  # seconds
+LOGIN_TIMEOUT = 600   # 10 minutes max wait for user to complete login
 
 
 def random_b64_str(length):
@@ -89,6 +95,7 @@ def do_captcha(url, redirect_url):
         print("  2. Solve the CAPTCHA")
         print("  3. Complete the login")
     print("\nWaiting for login to complete...")
+    print(f"(Timeout: {LOGIN_TIMEOUT // 60} minutes)")
     print("=" * 50 + "\n")
 
     # Configure Firefox for container environment
@@ -121,7 +128,6 @@ def do_captcha(url, redirect_url):
     if has_credentials:
         try:
             sleep(3)  # Wait for page to load
-            # Try common username field selectors
             username_filled = False
             password_filled = False
 
@@ -133,9 +139,9 @@ def do_captcha(url, redirect_url):
                     elem.clear()
                     elem.send_keys(username)
                     username_filled = True
-                    print(f"Username auto-filled")
+                    print("Username auto-filled")
                     break
-                except:
+                except NoSuchElementException:
                     continue
 
             sleep(0.5)
@@ -147,9 +153,9 @@ def do_captcha(url, redirect_url):
                     elem.clear()
                     elem.send_keys(password)
                     password_filled = True
-                    print(f"Password auto-filled")
+                    print("Password auto-filled")
                     break
-                except:
+                except NoSuchElementException:
                     continue
 
             if username_filled and password_filled:
@@ -160,26 +166,38 @@ def do_captcha(url, redirect_url):
             print(f"\nAuto-fill failed: {e}")
             print("Please enter credentials manually.")
 
+    # Wait for login with timeout
+    start_time = time.time()
     while True:
+        # Check timeout
+        if time.time() - start_time > LOGIN_TIMEOUT:
+            driver.quit()
+            raise Exception(f"Login timeout - no successful login within {LOGIN_TIMEOUT // 60} minutes")
+
         for request in driver.requests:
             if request.response:
                 if request.response.status_code == 302:
                     if "location" in request.response.headers:
                         location = request.response.headers["location"]
                         if redirect_url in location:
-                            code = re.search(r"code=(.*)", location).group(1)
-                            state = None
-                            if "state=" in location:
-                                state = re.search(r"state=(.*)", location).group(1)
-                            print("\nLogin successful! Closing browser...")
-                            driver.quit()
-                            return (code, state)
+                            # Use more specific regex to avoid capturing extra params
+                            code_match = re.search(r"code=([^&]+)", location)
+                            if code_match:
+                                code = code_match.group(1)
+                                state = None
+                                state_match = re.search(r"state=([^&]+)", location)
+                                if state_match:
+                                    state = state_match.group(1)
+                                print("\nLogin successful! Closing browser...")
+                                driver.quit()
+                                return (code, state)
         sleep(0.1)
 
 
 def resolve_endpoint_config(discovery_url, is_us_region=False):
     print(f"Discovering endpoint configuration (Region: {'US' if is_us_region else 'EU'})...")
-    discover_resp = json.loads(requests.get(discovery_url).text)
+    response = requests.get(discovery_url, timeout=REQUEST_TIMEOUT)
+    discover_resp = json.loads(response.text)
     sso_url = None
     is_auth0 = False
 
@@ -198,7 +216,8 @@ def resolve_endpoint_config(discovery_url, is_us_region=False):
     if sso_url is None:
         raise Exception("Could not get SSO config url")
 
-    sso_config = json.loads(requests.get(sso_url).text)
+    sso_response = requests.get(sso_url, timeout=REQUEST_TIMEOUT)
+    sso_config = json.loads(sso_response.text)
     api_base_url = f"https://{sso_config['server']['hostname']}:{sso_config['server']['port']}/{sso_config['server']['prefix']}"
     if api_base_url.endswith('/'):
         api_base_url = api_base_url[:-1]
@@ -228,7 +247,7 @@ def do_login_non_auth0(endpoint_config, logindata_file, rsa_keysize):
         'device-id': base64.b64encode(random_device_id().encode()).decode()
     }
     client_init_url = api_base_url + sso_config["mag"]["system_endpoints"]["client_credential_init_endpoint_path"]
-    client_init_req = requests.post(client_init_url, data=data, headers=headers)
+    client_init_req = requests.post(client_init_url, data=data, headers=headers, timeout=REQUEST_TIMEOUT)
     client_init_response = json.loads(client_init_req.text)
 
     # Step 2: Prepare authorization
@@ -251,7 +270,8 @@ def do_login_non_auth0(endpoint_config, logindata_file, rsa_keysize):
         'state': client_state
     }
     authorize_url = api_base_url + sso_config["oauth"]["system_endpoints"]["authorization_endpoint_path"]
-    providers = json.loads(requests.get(authorize_url, params=auth_params).text)
+    auth_response = requests.get(authorize_url, params=auth_params, timeout=REQUEST_TIMEOUT)
+    providers = json.loads(auth_response.text)
     captcha_url = providers["providers"][0]["provider"]["auth_url"]
 
     # Step 3: Browser login
@@ -290,7 +310,7 @@ def do_login_non_auth0(endpoint_config, logindata_file, rsa_keysize):
     }
     csr = reformat_csr(csr)
     reg_url = api_base_url + sso_config["mag"]["system_endpoints"]["device_register_endpoint_path"]
-    reg_req = requests.post(reg_url, headers=reg_headers, data=csr)
+    reg_req = requests.post(reg_url, headers=reg_headers, data=csr, timeout=REQUEST_TIMEOUT)
 
     if reg_req.status_code != 200:
         error_desc = json.loads(reg_req.text).get("error_description", "Unknown error")
@@ -308,7 +328,8 @@ def do_login_non_auth0(endpoint_config, logindata_file, rsa_keysize):
     token_req = requests.post(
         token_req_url,
         headers={"mag-identifier": reg_req.headers["mag-identifier"]},
-        data=token_req_data
+        data=token_req_data,
+        timeout=REQUEST_TIMEOUT
     )
 
     if token_req.status_code != 200:
@@ -353,7 +374,7 @@ def do_login_auth0(endpoint_config, logindata_file):
         "code": captcha_code,
         "redirect_uri": sso_config["client"]["redirect_uri"],
     }
-    token_req = requests.post(token_req_url, data=token_req_data)
+    token_req = requests.post(token_req_url, data=token_req_data, timeout=REQUEST_TIMEOUT)
 
     if token_req.status_code != 200:
         print(f"Error response: {token_req.text}")
@@ -380,7 +401,8 @@ def do_login(endpoint_config, logindata_file, rsa_keysize):
 def read_data_file(file):
     if os.path.isfile(file):
         try:
-            token_data = json.loads(open(file, "r").read())
+            with open(file, "r") as f:
+                token_data = json.load(f)
             required_fields = ["access_token", "refresh_token", "client_id"]
             for field in required_fields:
                 if field not in token_data:
@@ -405,8 +427,9 @@ def main():
                         default=False, action='store_true')
     args = parser.parse_args()
 
-    # Also check environment variable
-    is_us_region = args.us or os.environ.get('CARELINK_REGION', '').lower() == '--us'
+    # Also check environment variable (support multiple formats)
+    region_env = os.environ.get('CARELINK_REGION', '').lower().strip()
+    is_us_region = args.us or region_env in ('--us', 'us', 'true', '1')
 
     print("\n" + "=" * 50)
     print("   CARELINK TOKEN TOOL")

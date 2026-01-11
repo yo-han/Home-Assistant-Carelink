@@ -30,7 +30,7 @@ echo ""
 cd /output
 
 # Run the login script
-python /app/carelink_login.py $CARELINK_REGION
+python /app/carelink_login.py "$CARELINK_REGION"
 LOGIN_RESULT=$?
 
 echo ""
