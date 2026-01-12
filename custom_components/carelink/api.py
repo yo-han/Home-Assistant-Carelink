@@ -33,6 +33,7 @@ VERSION = "0.4"
 # Constants
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
 AUTH_FILE_PREFIX = "carelink_logindata"
+LEGACY_AUTH_FILE = "custom_components/carelink/logindata.json"
 CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6"
 AUTH_ERROR_CODES = [401,403]
 
@@ -85,8 +86,10 @@ class CarelinkClient:
 
         if config_path:
             self.__auth_file_path = os.path.join(config_path, auth_filename)
+            self.__legacy_auth_file_path = os.path.join(config_path, LEGACY_AUTH_FILE)
         else:
             self.__auth_file_path = auth_filename
+            self.__legacy_auth_file_path = LEGACY_AUTH_FILE
         self.__session_user = None
         self.__session_username = None
         self.__session_config = None
@@ -444,12 +447,24 @@ class CarelinkClient:
         printdbg("_process_token_file()")
         token_data = None
         file_exists = False
+        used_legacy = False
         try:
             async with aiofiles.open(filename, mode="r") as f:
                 token_data = json.loads(await f.read())
                 file_exists = True
         except FileNotFoundError:
             printdbg(f"Authentification file {filename} does not exist.")
+            # Try legacy location as fallback
+            try:
+                async with aiofiles.open(self.__legacy_auth_file_path, mode="r") as f:
+                    token_data = json.loads(await f.read())
+                    file_exists = True
+                    used_legacy = True
+                    printdbg(f"Found token file at legacy location: {self.__legacy_auth_file_path}")
+            except FileNotFoundError:
+                printdbg(f"Legacy auth file {self.__legacy_auth_file_path} also does not exist.")
+            except (OSError, json.JSONDecodeError) as error:
+                printdbg(f"ERROR: failed parsing legacy token file: {error}")
         except (OSError, json.JSONDecodeError) as error:
             printdbg(f"ERROR: failed parsing token file {filename}: {error}")
             file_exists = True  # File exists but failed to parse
@@ -464,6 +479,10 @@ class CarelinkClient:
                         cfg_complete = False
             if not cfg_complete:
                 token_data = None
+            elif used_legacy and token_data is not None:
+                # Copy token from legacy location to new location for future use
+                printdbg(f"Copying token from legacy location to {filename}")
+                await self._write_token_file(token_data, filename)
         else:
             if self.__carelink_access_token and self.__carelink_refresh_token and self.__client_id:
                 printdbg("Found static configuration. Create Authentificaiton file.")
