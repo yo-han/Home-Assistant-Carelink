@@ -31,11 +31,30 @@ Copy the `custom_components/carelink` to your `custom_components` folder. Reboot
 ### Carelink Login Data
 The needed information for the authentification process can either be provided as file (=logindata.json), or entered during the initial setup of the integration.
 #### Get the data
-The Home Assistant Carelink Integration needs the initial login data stored in the `logindata.json` file. There are two ways to create this file:
+The Home Assistant Carelink Integration needs the initial login data stored in the `logindata.json` file. There are three ways to create this file:
 
-##### Option 1: Docker Token Tool (Recommended)
+##### Option 1: Home Assistant Add-on (Recommended)
 
-The easiest way to get your `logindata.json` is using our Docker-based token tool. This requires only Docker - no Python or other dependencies needed.
+The easiest way to get your `logindata.json` is using the Carelink Token Generator add-on directly in Home Assistant. No technical knowledge required.
+
+1. Add this repository to your Home Assistant add-on store:
+   ```
+   https://github.com/yo-han/Home-Assistant-Carelink
+   ```
+
+2. Install the "Carelink Token Generator" add-on
+
+3. Configure your region (EU or US) and start the add-on
+
+4. Click "Open Web UI" and follow the login process
+
+5. The token file will be saved automatically - you can then add the Carelink integration with empty fields
+
+For more details, see the [Add-on README](carelink-token-generator/README.md).
+
+##### Option 2: Docker Token Tool
+
+If you can't use the Home Assistant add-on, you can use our Docker-based token tool. This requires Docker to be installed on your computer.
 
 1. Navigate to the token-tool folder and set up your credentials:
    ```bash
@@ -57,7 +76,7 @@ The easiest way to get your `logindata.json` is using our Docker-based token too
 
 For more details and troubleshooting, see the [Token Tool README](token-tool/README.md).
 
-##### Option 2: Python Script
+##### Option 3: Python Script
 
 Alternatively, you can run the login script directly on a PC with a screen.
 The login script from [@ondrej1024](https://github.com/ondrej1024)'s Carelink Python API, written by @palmarci (Pal Marci), was slightly modified and can be found here ["carelink_carepartner_api_login.py"](https://github.com/yo-han/Home-Assistant-Carelink/blob/develop/utils/carelink_carepartner_api_login.py).
