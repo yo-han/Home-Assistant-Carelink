@@ -98,7 +98,7 @@ def start_auth():
             logger.exception("Authentication error")
             auth_status = {
                 "status": "error",
-                "message": f"Error: {str(e)}",
+                "message": "An internal error occurred during authentication. Please try again.",
                 "token_file": None
             }
 
