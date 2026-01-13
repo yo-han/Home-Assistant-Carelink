@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carelink Token Generator</title>
+    <style>
+        :root {
+            --primary-color: #03a9f4;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --bg-color: #1c1c1c;
+            --card-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --text-secondary: #b0b0b0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .region-badge {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .status-container {
+            margin-bottom: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .status-idle {
+            border-left: 4px solid var(--text-secondary);
+        }
+
+        .status-running {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .status-success {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .status-error {
+            border-left: 4px solid var(--error-color);
+        }
+
+        .status-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .status-message {
+            font-size: 14px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0288d1;
+        }
+
+        .btn-primary:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--text-secondary);
+            margin-top: 12px;
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .instructions {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .instructions h3 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .success-icon {
+            display: inline-block;
+            color: var(--success-color);
+            margin-right: 8px;
+        }
+
+        .error-icon {
+            display: inline-block;
+            color: var(--error-color);
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>Carelink Token Generator</h1>
+                <p>Generate login tokens for the Carelink integration</p>
+                <span class="region-badge">Region: {{ region | upper }}</span>
+            </div>
+
+            <div id="status" class="status-container status-idle">
+                <div class="status-label">Status</div>
+                <div class="status-message" id="status-message">
+                    Ready to start authentication
+                </div>
+            </div>
+
+            <button id="start-btn" class="btn btn-primary" onclick="startAuth()">
+                Start Login Process
+            </button>
+
+            <button id="reset-btn" class="btn btn-secondary" onclick="resetAuth()" style="display: none;">
+                Start Over
+            </button>
+
+            <div class="instructions">
+                <h3>How it works:</h3>
+                <ol>
+                    <li>Click "Start Login Process"</li>
+                    <li>A browser window will open automatically</li>
+                    <li>Log in with your Carelink credentials</li>
+                    <li>The tokens will be saved automatically</li>
+                    <li>Add the Carelink integration with empty fields</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pollInterval = null;
+
+        function startAuth() {
+            const btn = document.getElementById('start-btn');
+            btn.disabled = true;
+            btn.textContent = 'Starting...';
+
+            fetch('/start', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'started') {
+                        pollStatus();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    btn.disabled = false;
+                    btn.textContent = 'Start Login Process';
+                });
+        }
+
+        function pollStatus() {
+            if (pollInterval) clearInterval(pollInterval);
+
+            pollInterval = setInterval(() => {
+                fetch('/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateUI(data);
+
+                        if (data.status === 'success' || data.status === 'error') {
+                            clearInterval(pollInterval);
+                            pollInterval = null;
+                        }
+                    })
+                    .catch(error => console.error('Poll error:', error));
+            }, 1000);
+        }
+
+        function updateUI(data) {
+            const statusDiv = document.getElementById('status');
+            const statusMessage = document.getElementById('status-message');
+            const startBtn = document.getElementById('start-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            // Remove all status classes
+            statusDiv.className = 'status-container';
+
+            switch (data.status) {
+                case 'idle':
+                    statusDiv.classList.add('status-idle');
+                    statusMessage.innerHTML = 'Ready to start authentication';
+                    startBtn.disabled = false;
+                    startBtn.textContent = 'Start Login Process';
+                    startBtn.style.display = 'block';
+                    resetBtn.style.display = 'none';
+                    break;
+
+                case 'running':
+                    statusDiv.classList.add('status-running');
+                    statusMessage.innerHTML = '<span class="spinner"></span>' + data.message;
+                    startBtn.disabled = true;
+                    startBtn.textContent = 'Authentication in progress...';
+                    startBtn.style.display = 'block';
+                    resetBtn.style.display = 'none';
+                    break;
+
+                case 'success':
+                    statusDiv.classList.add('status-success');
+                    statusMessage.innerHTML = '<span class="success-icon">✓</span>' + data.message;
+                    startBtn.style.display = 'none';
+                    resetBtn.style.display = 'block';
+                    break;
+
+                case 'error':
+                    statusDiv.classList.add('status-error');
+                    statusMessage.innerHTML = '<span class="error-icon">✗</span>' + data.message;
+                    startBtn.style.display = 'none';
+                    resetBtn.style.display = 'block';
+                    break;
+            }
+        }
+
+        function resetAuth() {
+            fetch('/reset', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    updateUI({ status: 'idle', message: '' });
+                });
+        }
+
+        // Initial status check
+        fetch('/status')
+            .then(response => response.json())
+            .then(data => updateUI(data));
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+name: Carelink Token Generator
+version: 1.0.0
+slug: carelink-token-generator
+description: Generate Carelink login tokens for the Carelink integration
+url: https://github.com/yo-han/Home-Assistant-Carelink
+
+# Supported architectures
+arch:
+  - amd64
+  - aarch64
+
+# Startup priority
+startup: application
+boot: manual
+
+# Configuration options shown in UI
+options:
+  region: eu
+
+schema:
+  region: list(eu|us)
+
+# Enable web UI via ingress
+ingress: true
+ingress_port: 8099
+
+# Panel in sidebar
+panel_title: Carelink Tokens
+panel_icon: mdi:key-variant
+
+# Mount Home Assistant config to save logindata.json
+map:
+  - homeassistant_config:rw
+
+# Required for running Firefox/Selenium
+privileged: true
+
+# Host network for browser
+host_network: false
+
+# Init system
+init: false

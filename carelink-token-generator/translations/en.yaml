@@ -1,0 +1,4 @@
+configuration:
+  region:
+    name: Region
+    description: Select your Carelink region (EU or US)
