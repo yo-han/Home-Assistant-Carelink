@@ -4,7 +4,7 @@ A Home Assistant add-on that provides a web interface for generating Carelink lo
 
 ## About
 
-This add-on makes it easy for non-technical users to generate the `logindata.json` file required by the [Carelink Integration](https://github.com/yo-han/Home-Assistant-Carelink). No Python or Docker knowledge required.
+This add-on makes it easy for non-technical users to generate the `/config/carelink_logindata.json` shared seed file required by the [Carelink Integration](https://github.com/yo-han/Home-Assistant-Carelink). No Python or Docker knowledge required.
 
 ## Features
 
@@ -42,7 +42,7 @@ After generating the token:
 1. Go to **Settings** → **Devices & Services** → **Add Integration**
 2. Search for "Carelink"
 3. Leave the username and password fields empty
-4. The integration will automatically use the generated token file
+4. The integration will automatically use the generated token file and copy it to an entry-specific file
 
 ## Configuration
 
@@ -74,6 +74,8 @@ This add-on runs:
 - Firefox with Selenium for OAuth flow automation
 
 The generated token file is saved to `/config/carelink_logindata.json` which is the Home Assistant config directory.
+The integration will copy this shared seed to `/config/carelink_logindata_<entry_id>.json` on first setup.
+If you regenerate tokens, the integration will update the entry-specific file when the shared seed is newer.
 
 ## Support
 

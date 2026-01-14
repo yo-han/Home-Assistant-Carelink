@@ -29,9 +29,9 @@ Copy the `custom_components/carelink` to your `custom_components` folder. Reboot
 ## Integration Setup
 
 ### Carelink Login Data
-The needed information for the authentification process can either be provided as file (=logindata.json), or entered during the initial setup of the integration.
+The needed information for the authentification process can either be provided as a shared seed file (`/config/carelink_logindata.json`), or entered during the initial setup of the integration.
 #### Get the data
-The Home Assistant Carelink Integration needs the initial login data stored in the `logindata.json` file. There are three ways to create this file:
+The Home Assistant Carelink Integration needs the initial login data stored in `/config/carelink_logindata.json` (shared seed). There are three ways to create this file:
 
 ##### Option 1: Home Assistant Add-on (Recommended)
 
@@ -48,7 +48,7 @@ The easiest way to get your `logindata.json` is using the Carelink Token Generat
 
 4. Click "Open Web UI" and follow the login process
 
-5. The token file will be saved automatically - you can then add the Carelink integration with empty fields
+5. The token file will be saved automatically to `/config/carelink_logindata.json` - you can then add the Carelink integration with empty fields
 
 For more details, see the [Add-on README](carelink-token-generator/README.md).
 
@@ -73,6 +73,7 @@ If you can't use the Home Assistant add-on, you can use our Docker-based token t
 4. **Wait a few seconds** for your credentials to be auto-filled, then solve the CAPTCHA
 
 5. Download your token file from `http://localhost:8000/logindata.json` or find it in `./token-tool/output/`
+6. Copy it to your Home Assistant config directory as `/config/carelink_logindata.json`
 
 For more details and troubleshooting, see the [Token Tool README](token-tool/README.md).
 
@@ -110,12 +111,15 @@ On successful completion of the login, the data file will be created with the fo
 ![grafik](https://github.com/sedy89/Home-Assistant-Carelink/assets/65983953/35a60542-03fc-4deb-a14c-c96b0155bdd4)
 
 #### Provide the data
-Either the content of the `logindata.json` file can be taken over into the setup of the HA Carelink integration, or the entire file can be uploaded into the custom_componend/carelink folder (recommended).
+Either the content of the `logindata.json` file can be taken over into the setup of the HA Carelink integration, or the entire file can be placed at `/config/carelink_logindata.json` (shared seed).
 
 ![grafik](https://github.com/sedy89/Home-Assistant-Carelink/assets/65983953/0a1d8773-7905-4fec-9bff-b3a0f01817b9)
 
-All parameters during setup are optional and a provided file will have a higher priority and overwrite the manual configuration.
-If the file was copied to `custom_components/carelink` before the integration setup was started in Home Assistant, all parameters during the setup can stay empty.
+All parameters during setup are optional and a provided shared seed file will have a higher priority and overwrite the manual configuration.
+If the file was placed at `/config/carelink_logindata.json` before the integration setup was started in Home Assistant, all parameters during the setup can stay empty.
+The integration will copy the shared seed into an entry-specific file at `/config/carelink_logindata_<entry_id>.json`.
+If you regenerate tokens, the integration will update the entry-specific file when the shared seed is newer.
+Legacy installs that still use `custom_components/carelink/logindata.json` will be handled as a fallback.
 With those information, the Home Assistant Carelink Integration will be able to automatically refresh the login data when it expires.
 It should be able to do so within one week of the last refresh.
 

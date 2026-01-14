@@ -34,6 +34,7 @@ VERSION = "0.4"
 AUTH_EXPIRE_DEADLINE_MINUTES = 10
 AUTH_FILE_PREFIX = "carelink_logindata"
 LEGACY_AUTH_FILE = "custom_components/carelink/logindata.json"
+SHARED_AUTH_FILE = f"{AUTH_FILE_PREFIX}.json"
 CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6"
 AUTH_ERROR_CODES = [401,403]
 
@@ -87,9 +88,11 @@ class CarelinkClient:
         if config_path:
             self.__auth_file_path = os.path.join(config_path, auth_filename)
             self.__legacy_auth_file_path = os.path.join(config_path, LEGACY_AUTH_FILE)
+            self.__shared_auth_file_path = os.path.join(config_path, SHARED_AUTH_FILE)
         else:
             self.__auth_file_path = auth_filename
             self.__legacy_auth_file_path = LEGACY_AUTH_FILE
+            self.__shared_auth_file_path = SHARED_AUTH_FILE
         self.__session_user = None
         self.__session_username = None
         self.__session_config = None
@@ -465,52 +468,109 @@ class CarelinkClient:
         return None
 
     async def _write_token_file(self, obj, filename):
-        printdbg("_write_token_file()")
-        directory = os.path.dirname(filename)
-        if directory:
-            await asyncio.to_thread(os.makedirs, directory, exist_ok=True)
-        async with aiofiles.open(filename, 'w') as f:
-            await f.write(json.dumps(obj, indent=4))
+        printdbg(f"_write_token_file() -> {filename}")
+        try:
+            directory = os.path.dirname(filename)
+            if directory:
+                await asyncio.to_thread(os.makedirs, directory, exist_ok=True)
+            async with aiofiles.open(filename, 'w') as f:
+                await f.write(json.dumps(obj, indent=4))
+            printdbg("Token file written successfully")
+            return True
+        except (OSError, IOError) as error:
+            printdbg(f"ERROR: Failed to write token file {filename}: {error}")
+            return False
+
+    def _has_required_token_fields(self, token_data):
+        if token_data is None:
+            return False
+        required_fields = ["access_token", "refresh_token", "client_id"]
+        return all(field in token_data for field in required_fields)
+
+    async def _load_shared_seed_if_newer(self, filename):
+        try:
+            shared_mtime = os.path.getmtime(self.__shared_auth_file_path)
+            entry_mtime = os.path.getmtime(filename)
+        except FileNotFoundError:
+            return None
+        except OSError as error:
+            printdbg(f"ERROR: failed checking token file timestamps: {error}")
+            return None
+
+        if shared_mtime <= entry_mtime:
+            return None
+
+        try:
+            async with aiofiles.open(self.__shared_auth_file_path, mode="r") as f:
+                token_data = json.loads(await f.read())
+        except FileNotFoundError:
+            return None
+        except (OSError, json.JSONDecodeError) as error:
+            printdbg(f"ERROR: failed parsing shared token file: {error}")
+            return None
+
+        if not self._has_required_token_fields(token_data):
+            printdbg("ERROR: shared token file is missing required fields")
+            return None
+
+        printdbg("Shared token file is newer than entry-specific file; using shared seed")
+        return token_data
 
     async def _process_token_file(self, filename):
         printdbg("_process_token_file()")
         token_data = None
         file_exists = False
         used_legacy = False
+        used_shared = False
         try:
             async with aiofiles.open(filename, mode="r") as f:
                 token_data = json.loads(await f.read())
                 file_exists = True
+                shared_seed = await self._load_shared_seed_if_newer(filename)
+                if shared_seed is not None:
+                    token_data = shared_seed
+                    used_shared = True
         except FileNotFoundError:
-            printdbg(f"Authentification file {filename} does not exist.")
-            # Try legacy location as fallback
+            printdbg(f"Entry-specific auth file {filename} does not exist.")
+            # Try shared location first (token generator add-on writes here)
             try:
-                async with aiofiles.open(self.__legacy_auth_file_path, mode="r") as f:
+                async with aiofiles.open(self.__shared_auth_file_path, mode="r") as f:
                     token_data = json.loads(await f.read())
                     file_exists = True
-                    used_legacy = True
-                    printdbg(f"Found token file at legacy location: {self.__legacy_auth_file_path}")
+                    used_shared = True
+                    printdbg(f"Found shared token file at: {self.__shared_auth_file_path}")
             except FileNotFoundError:
-                printdbg(f"Legacy auth file {self.__legacy_auth_file_path} also does not exist.")
+                printdbg(f"Shared auth file {self.__shared_auth_file_path} does not exist.")
             except (OSError, json.JSONDecodeError) as error:
-                printdbg(f"ERROR: failed parsing legacy token file: {error}")
+                printdbg(f"ERROR: failed parsing shared token file: {error}")
+            # Try legacy location as fallback (old installations)
+            if not file_exists:
+                try:
+                    async with aiofiles.open(self.__legacy_auth_file_path, mode="r") as f:
+                        token_data = json.loads(await f.read())
+                        file_exists = True
+                        used_legacy = True
+                        printdbg(f"Found token file at legacy location: {self.__legacy_auth_file_path}")
+                except FileNotFoundError:
+                    printdbg(f"Legacy auth file {self.__legacy_auth_file_path} also does not exist.")
+                except (OSError, json.JSONDecodeError) as error:
+                    printdbg(f"ERROR: failed parsing legacy token file: {error}")
         except (OSError, json.JSONDecodeError) as error:
             printdbg(f"ERROR: failed parsing token file {filename}: {error}")
             file_exists = True  # File exists but failed to parse
 
         if file_exists:
             cfg_complete = True
-            if token_data is not None:
-                required_fields = ["access_token", "refresh_token", "client_id"]
-                for field in required_fields:
+            if token_data is not None and not self._has_required_token_fields(token_data):
+                for field in ["access_token", "refresh_token", "client_id"]:
                     if field not in token_data:
                         printdbg(f"ERROR: field {field} is missing from token file")
-                        cfg_complete = False
+                cfg_complete = False
             if not cfg_complete:
                 token_data = None
-            elif used_legacy and token_data is not None:
-                # Copy token from legacy location to new location for future use
-                printdbg(f"Copying token from legacy location to {filename}")
+            elif token_data is not None and (used_legacy or used_shared):
+                # Copy token from legacy/shared location to new location for future use
+                printdbg(f"Copying token from fallback location to {filename}")
                 await self._write_token_file(token_data, filename)
         else:
             if self.__carelink_access_token and self.__carelink_refresh_token and self.__client_id:
@@ -531,6 +591,16 @@ class CarelinkClient:
     # Authentication methods
     async def login(self):
         """perform login"""
+        if self.__initialized:
+            shared_seed = await self._load_shared_seed_if_newer(self.__auth_file_path)
+            if shared_seed is not None:
+                self.__token_data = shared_seed
+                await self._write_token_file(shared_seed, self.__auth_file_path)
+                self.__session_user = None
+                self.__session_username = None
+                self.__session_config = None
+                self.__session_country = None
+                self.__initialized = False
         if not self.__initialized:
             await self.__execute_init_procedure()
         return self.__initialized

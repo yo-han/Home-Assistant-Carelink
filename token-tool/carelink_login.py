@@ -417,7 +417,7 @@ def read_data_file(file):
 
 def main():
     # Configuration
-    logindata_file = 'logindata.json'
+    default_logindata_file = "logindata.json"
     discovery_url = 'https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6'
     rsa_keysize = 2048
 
@@ -425,11 +425,19 @@ def main():
     parser = argparse.ArgumentParser(description='Carelink Token Tool')
     parser.add_argument('--us', help='Use US region (default: EU)',
                         default=False, action='store_true')
+    parser.add_argument(
+        "--output",
+        help="Output path for logindata.json (env: CARELINK_OUTPUT_FILE)",
+        default=None,
+    )
     args = parser.parse_args()
 
     # Also check environment variable (support multiple formats)
     region_env = os.environ.get('CARELINK_REGION', '').lower().strip()
     is_us_region = args.us or region_env in ('--us', 'us', 'true', '1')
+
+    output_env = os.environ.get("CARELINK_OUTPUT_FILE", "").strip()
+    logindata_file = output_env or args.output or default_logindata_file
 
     print("\n" + "=" * 50)
     print("   CARELINK TOKEN TOOL")
@@ -442,7 +450,7 @@ def main():
 
     if token_data is not None:
         print("\nExisting token file found!")
-        print("Delete logindata.json to generate new tokens.")
+        print(f"Delete {os.path.basename(logindata_file)} to generate new tokens.")
         return
 
     print("\nStarting login process...")

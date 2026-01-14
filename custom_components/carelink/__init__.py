@@ -16,7 +16,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from .api import CarelinkClient, LEGACY_AUTH_FILE, AUTH_FILE_PREFIX
+from .api import CarelinkClient, LEGACY_AUTH_FILE, AUTH_FILE_PREFIX, SHARED_AUTH_FILE
 from .nightscout_uploader import NightscoutUploader
 
 from .const import (
@@ -120,29 +120,60 @@ def convert_date_to_isodate(date):
 def _migrate_legacy_logindata(config_path: str, entry_id: str) -> None:
     """Migrate logindata.json from old location to new entry-specific location.
 
-    Old location: custom_components/carelink/logindata.json (relative to config)
-    New location: {config_path}/carelink_logindata_{entry_id}.json
+    Priority order for source:
+    1. Shared location: {config_path}/carelink_logindata.json (token generator add-on)
+    2. Legacy location: custom_components/carelink/logindata.json
+
+    Target: {config_path}/carelink_logindata_{entry_id}.json
+
+    Note: Source files are NOT deleted after migration to serve as fallback
+    if the entry-specific location becomes unavailable.
     """
-    old_path = os.path.join(config_path, LEGACY_AUTH_FILE)
     new_filename = f"{AUTH_FILE_PREFIX}_{entry_id}.json"
     new_path = os.path.join(config_path, new_filename)
 
-    # Only migrate if old file exists and new file doesn't
-    if os.path.exists(old_path) and not os.path.exists(new_path):
+    # If entry-specific file already exists, no migration needed
+    if os.path.exists(new_path):
+        _LOGGER.debug("Entry-specific logindata already exists: %s", new_path)
+        return
+
+    shared_path = os.path.join(config_path, SHARED_AUTH_FILE)
+    legacy_path = os.path.join(config_path, LEGACY_AUTH_FILE)
+
+    # Try shared location first (token generator add-on writes here)
+    if os.path.exists(shared_path):
         try:
-            shutil.copy2(old_path, new_path)
+            shutil.copy(shared_path, new_path)
             _LOGGER.info(
-                "Migrated logindata from %s to %s",
-                old_path,
+                "Copied logindata from shared location %s to %s",
+                shared_path,
                 new_path
             )
-            # Remove old file after successful migration
-            os.remove(old_path)
-            _LOGGER.debug("Removed legacy logindata file: %s", old_path)
+            return
         except OSError as error:
             _LOGGER.warning(
-                "Failed to migrate logindata from %s to %s: %s",
-                old_path,
+                "Failed to copy logindata from %s to %s: %s. "
+                "Will use fallback location at runtime.",
+                shared_path,
+                new_path,
+                error
+            )
+
+    # Try legacy location (old installations)
+    if os.path.exists(legacy_path):
+        try:
+            shutil.copy(legacy_path, new_path)
+            _LOGGER.info(
+                "Migrated logindata from legacy location %s to %s",
+                legacy_path,
+                new_path
+            )
+            return
+        except OSError as error:
+            _LOGGER.warning(
+                "Failed to migrate logindata from %s to %s: %s. "
+                "Will use fallback location at runtime.",
+                legacy_path,
                 new_path,
                 error
             )

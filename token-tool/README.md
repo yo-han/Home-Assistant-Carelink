@@ -49,7 +49,7 @@ Open `http://localhost:6080/vnc.html?autoconnect=true` and enter credentials man
 3. **Wait a few seconds** for credentials to be auto-filled (if configured)
 4. **Solve the CAPTCHA** and complete the login
 5. **Download your tokens**: `http://localhost:8000/logindata.json` (or find in `./output/`)
-6. **Copy to Home Assistant**: Place `logindata.json` in `custom_components/carelink/`
+6. **Copy to Home Assistant**: Place the file at `/config/carelink_logindata.json` (shared seed)
 
 ## Region Selection
 
@@ -57,6 +57,15 @@ For **US region**, add to your `.env` file:
 
 ```bash
 CARELINK_REGION=us
+```
+
+## Output Path
+
+By default the tool writes `logindata.json` locally. To write directly to a different
+location (for example a mounted Home Assistant config directory), set:
+
+```bash
+CARELINK_OUTPUT_FILE=/config/carelink_logindata.json
 ```
 
 ## Docker Commands
