@@ -251,6 +251,7 @@ class CarelinkClient:
                 raise ValueError(f"ERROR: failed to get config base urls for region {region}")
 
             sso_configuration_key = config["UseSSOConfiguration"]
+            is_auth0 = "Auth0" in sso_configuration_key
 
             resp = await self.fetch_async(config[sso_configuration_key], self.__common_headers)
             self.__last_response_code = resp.status_code
@@ -259,14 +260,41 @@ class CarelinkClient:
                     f"__get_config_settings() SSOConfiguration response is not OK: {resp.status_code}"
                 )
             sso_config = resp.json()
-            hostname = sso_config["server"]["hostname"]
-            port = sso_config["server"]["port"]
-            prefix = sso_config["server"]["prefix"]
-            sso_base_url = f"https://{hostname}:{port}/{prefix}"
+
+            # Handle Auth0 vs standard MAG token URL construction
+            if is_auth0:
+                # Auth0 config may have issuer at top level or server config
+                if "issuer" in sso_config and sso_config["issuer"]:
+                    sso_base_url = sso_config["issuer"].rstrip("/")
+                elif "server" in sso_config:
+                    hostname = sso_config["server"]["hostname"]
+                    port = sso_config["server"]["port"]
+                    prefix = sso_config["server"]["prefix"]
+                    sso_base_url = f"https://{hostname}:{port}/{prefix}"
+                else:
+                    # Fallback: try to extract from authorization endpoint
+                    auth_endpoint = sso_config.get("system_endpoints", {}).get(
+                        "authorization_endpoint_path", ""
+                    )
+                    if auth_endpoint.startswith("http"):
+                        sso_base_url = auth_endpoint.rsplit("/", 1)[0]
+                    else:
+                        raise ValueError(
+                            f"Cannot determine Auth0 base URL from SSO config: {list(sso_config.keys())}"
+                        )
+                printdbg(f"Auth0 detected, base URL: {sso_base_url}")
+            else:
+                # Standard MAG configuration
+                hostname = sso_config["server"]["hostname"]
+                port = sso_config["server"]["port"]
+                prefix = sso_config["server"]["prefix"]
+                sso_base_url = f"https://{hostname}:{port}/{prefix}"
+
             if sso_base_url.endswith('/'):
-                sso_base_url = sso_base_url[:-1] # remove trailing slash if prefix is empty
+                sso_base_url = sso_base_url[:-1]
             token_url = sso_base_url + sso_config["system_endpoints"]["token_endpoint_path"]
             config["token_url"] = token_url
+            config["is_auth0"] = is_auth0
         except Exception as e:
             printdbg(e)
         return config
