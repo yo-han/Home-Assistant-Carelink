@@ -294,7 +294,6 @@ class CarelinkClient:
                 sso_base_url = sso_base_url[:-1]
             token_url = sso_base_url + sso_config["system_endpoints"]["token_endpoint_path"]
             config["token_url"] = token_url
-            config["is_auth0"] = is_auth0
         except Exception as e:
             printdbg(e)
         return config
