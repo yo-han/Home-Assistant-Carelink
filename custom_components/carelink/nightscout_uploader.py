@@ -422,6 +422,8 @@ class NightscoutUploader:
             response = await self.__setSGS(sgs, tz)
             if response:
                 printdbg("sending SGS entries was ok")
+        else:
+            printdbg("No SGS data available, skipping upload")
         # Sending Basal, Bolus, Auto Bolus (markers block)
         markers = recent_data.get("markers")
         if markers is not None:
@@ -434,6 +436,8 @@ class NightscoutUploader:
             response = await self.__setAutoBolus(markers, tz)
             if response:
                 printdbg("sending auto bolus was ok")
+        else:
+            printdbg("No markers data available, skipping basal/bolus upload")
         # Sending Notifications (notificationHistory block)
         notification_history = recent_data.get("notificationHistory")
         if notification_history is not None:
@@ -446,6 +450,8 @@ class NightscoutUploader:
             response = await self.__setAlerts(notification_history, tz)
             if response:
                 printdbg("sending alert notifications was ok")
+        else:
+            printdbg("No notification history available, skipping notifications upload")
 
     # Periodic upload to Nightscout
     async def send_recent_data(
