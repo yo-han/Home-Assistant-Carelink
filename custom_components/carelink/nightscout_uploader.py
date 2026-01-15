@@ -244,15 +244,15 @@ class NightscoutUploader:
         return success
 
     def __getMsgs(self, rawdata, tz):
-        msgs=self.__get_treatments(rawdata["clearedNotifications"], "type", "MESSAGE")
+        msgs = self.__get_treatments(rawdata.get("clearedNotifications", []), "type", "MESSAGE")
         return self.__getMsgEntries(msgs, tz)
 
     def __getAlarms(self, rawdata, tz):
-        alarms=self.__get_treatments(rawdata["clearedNotifications"], "type", "ALARM")
+        alarms = self.__get_treatments(rawdata.get("clearedNotifications", []), "type", "ALARM")
         return self.__getMsgEntries(alarms, tz)
 
     def __getAlerts(self, rawdata, tz):
-        alerts=self.__get_treatments(rawdata["clearedNotifications"], "type", "ALERT")
+        alerts = self.__get_treatments(rawdata.get("clearedNotifications", []), "type", "ALERT")
         return self.__getMsgEntries(alerts, tz)
 
     def __getMsgEntries(self, raw, tz):
@@ -417,33 +417,35 @@ class NightscoutUploader:
         if response:
             printdbg("sending device status was ok")
         # Sending all SGS
-        response = await self.__setSGS(recent_data["sgs"], tz)
-        if response:
-            printdbg("sending SGS entries was ok")
-        # Sending Basal
-        response = await self.__setBasal(recent_data["markers"], tz)
-        if response:
-            printdbg("sending basal was ok")
-        # Sending all Bolus
-        response = await self.__setBolus(recent_data["markers"], tz)
-        if response:
-            printdbg("sending meal bolus was ok")
-        # Sending all auto Bolus
-        response = await self.__setAutoBolus(recent_data["markers"], tz)
-        if response:
-            printdbg("sending auto bolus was ok")
-        # Sending alarms
-        response = await self.__setAlarms(recent_data["notificationHistory"], tz)
-        if response:
-            printdbg("sending alarm notifications was ok")
-        # Sending messages
-        response = await self.__setMsgs(recent_data["notificationHistory"], tz)
-        if response:
-            printdbg("sending message notifications was ok")
-        # Sending alerts
-        response = await self.__setAlerts(recent_data["notificationHistory"], tz)
-        if response:
-            printdbg("sending alert notifications was ok")
+        sgs = recent_data.get("sgs")
+        if sgs is not None:
+            response = await self.__setSGS(sgs, tz)
+            if response:
+                printdbg("sending SGS entries was ok")
+        # Sending Basal, Bolus, Auto Bolus (markers block)
+        markers = recent_data.get("markers")
+        if markers is not None:
+            response = await self.__setBasal(markers, tz)
+            if response:
+                printdbg("sending basal was ok")
+            response = await self.__setBolus(markers, tz)
+            if response:
+                printdbg("sending meal bolus was ok")
+            response = await self.__setAutoBolus(markers, tz)
+            if response:
+                printdbg("sending auto bolus was ok")
+        # Sending Notifications (notificationHistory block)
+        notification_history = recent_data.get("notificationHistory")
+        if notification_history is not None:
+            response = await self.__setAlarms(notification_history, tz)
+            if response:
+                printdbg("sending alarm notifications was ok")
+            response = await self.__setMsgs(notification_history, tz)
+            if response:
+                printdbg("sending message notifications was ok")
+            response = await self.__setAlerts(notification_history, tz)
+            if response:
+                printdbg("sending alert notifications was ok")
 
     # Periodic upload to Nightscout
     async def send_recent_data(
