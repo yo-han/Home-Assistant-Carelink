@@ -1,5 +1,7 @@
 """Constants for the carelink integration."""
 
+from datetime import timedelta
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntityDescription,
@@ -11,10 +13,12 @@ from homeassistant.components.binary_sensor import (
 )
 
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.util import dt as dt_util
 
 UNAVAILABLE = None
 
 DOMAIN = "carelink"
+INTEGRATION_NAME = "Carelink"
 CLIENT = "carelink_client"
 COORDINATOR = "coordinator"
 UPLOADER = "nightscout_uploader"
@@ -22,6 +26,8 @@ SCAN_INTERVAL = "scan_interval"
 
 # Hours after which data is considered stale and sensors become unavailable
 DATA_STALE_TIMEOUT_HOURS = 2
+# Cached timedelta to avoid recreating on every availability check
+DATA_STALE_TIMEDELTA = timedelta(hours=DATA_STALE_TIMEOUT_HOURS)
 
 SENSOR_KEY_LASTSG_MMOL = "last_sg_mmol"
 SENSOR_KEY_LASTSG_MGDL = "last_sg_mgdl"
@@ -87,6 +93,16 @@ BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE = "binary_sensor_conduit_sensor_in_ran
 DEVICE_PUMP_SERIAL = "pump serial"
 DEVICE_PUMP_NAME = "pump name"
 DEVICE_PUMP_MODEL = "pump model"
+
+# Sensors that should always remain available even with stale data
+# This includes timestamp sensors (for troubleshooting) and alarm/notification
+# sensors (critical safety - users must see last alarm even if connectivity drops)
+SENSORS_ALWAYS_AVAILABLE = (
+    SENSOR_KEY_UPDATE_TIMESTAMP,
+    SENSOR_KEY_LASTSG_TIMESTAMP,
+    SENSOR_KEY_LAST_ALARM,
+    SENSOR_KEY_ACTIVE_NOTIFICATION,
+)
 
 MMOL = "mmol/L"
 MGDL = "mg/dL"
@@ -641,3 +657,25 @@ MS_TIMEZONE_TO_IANA_MAP = {
     "Tonga Standard Time": "Pacific/Tongatapu",
     "tzone://Microsoft/Utc": "UTC",
 }
+
+
+def is_data_stale(coordinator_data: dict, sensor_key: str) -> bool:
+    """Check if coordinator data is stale based on last update timestamp.
+    
+    Args:
+        coordinator_data: The coordinator's data dictionary
+        sensor_key: The sensor key (used for logging/debugging)
+    
+    Returns:
+        True if data is stale (older than DATA_STALE_TIMEOUT_HOURS), False otherwise
+    """
+    last_update = coordinator_data.get(SENSOR_KEY_UPDATE_TIMESTAMP)
+    if last_update is None:
+        return True
+    
+    # Calculate time difference
+    now = dt_util.utcnow()
+    time_diff = now - last_update
+    
+    # Return True if data is stale (exceeded threshold)
+    return time_diff >= DATA_STALE_TIMEDELTA

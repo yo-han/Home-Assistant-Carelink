@@ -1,8 +1,6 @@
 """Support for Carelink."""
 from __future__ import annotations
 
-from datetime import timedelta
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -16,18 +14,17 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
-from homeassistant.util import dt as dt_util
 
 from .const import (
     COORDINATOR,
-    DATA_STALE_TIMEOUT_HOURS,
     DEVICE_PUMP_MODEL,
     DEVICE_PUMP_NAME,
     DEVICE_PUMP_SERIAL,
     DOMAIN,
+    INTEGRATION_NAME,
     SENSORS,
-    SENSOR_KEY_UPDATE_TIMESTAMP,
-    SENSOR_KEY_LASTSG_TIMESTAMP,
+    SENSORS_ALWAYS_AVAILABLE,
+    is_data_stale,
 )
 
 
@@ -46,9 +43,9 @@ async def async_setup_entry(
 
     for sensor_description in SENSORS:
         if device_name:
-            entity_name = f"Carelink {device_name} {sensor_description.name}"
+            entity_name = f"{INTEGRATION_NAME} {device_name} {sensor_description.name}"
         else:
-            entity_name = f"Carelink {sensor_description.name}"
+            entity_name = f"{INTEGRATION_NAME} {sensor_description.name}"
 
         entities.append(
             # pylint: disable=too-many-function-args
@@ -72,10 +69,6 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
         self.coordinator = coordinator
         self.sensor_description = sensor_description
         self._attr_name = entity_name
-
-    @property
-    def name(self) -> str:
-        return self._attr_name
 
     @property
     def unique_id(self) -> str:
@@ -127,28 +120,11 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        # Timestamp sensors should always be available to show when last update was
-        if self.sensor_description.key in (SENSOR_KEY_UPDATE_TIMESTAMP, SENSOR_KEY_LASTSG_TIMESTAMP):
-            return True
-
-        # Check if data is stale based on last update timestamp
-        last_update = self.coordinator.data.get(SENSOR_KEY_UPDATE_TIMESTAMP)
-        if last_update is None:
-            return False
-
-        # If last_update is a string, try to parse it
-        if isinstance(last_update, str):
-            try:
-                last_update = dt_util.parse_datetime(last_update)
-            except (ValueError, TypeError):
-                return False
-
-        if last_update is None:
-            return False
-
-        # Calculate time difference
-        now = dt_util.utcnow()
-        time_diff = now - last_update
-
-        # Mark as unavailable if data is older than threshold
-        return time_diff < timedelta(hours=DATA_STALE_TIMEOUT_HOURS)
+        # Check coordinator availability and data staleness
+        # Some sensors (timestamps, alarms) always stay available for safety/troubleshooting
+        if self.sensor_description.key in SENSORS_ALWAYS_AVAILABLE:
+            return super().available
+        
+        return super().available and not is_data_stale(
+            self.coordinator.data, self.sensor_description.key
+        )
