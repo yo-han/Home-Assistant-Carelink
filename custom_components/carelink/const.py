@@ -20,6 +20,9 @@ COORDINATOR = "coordinator"
 UPLOADER = "nightscout_uploader"
 SCAN_INTERVAL = "scan_interval"
 
+# Hours after which data is considered stale and sensors become unavailable
+DATA_STALE_TIMEOUT_HOURS = 2
+
 SENSOR_KEY_LASTSG_MMOL = "last_sg_mmol"
 SENSOR_KEY_LASTSG_MGDL = "last_sg_mgdl"
 SENSOR_KEY_UPDATE_TIMESTAMP = "last_update_timestamp"

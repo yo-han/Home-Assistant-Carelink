@@ -1,6 +1,8 @@
 """Support for Carelink."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -14,14 +16,18 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+from homeassistant.util import dt as dt_util
 
 from .const import (
     COORDINATOR,
+    DATA_STALE_TIMEOUT_HOURS,
     DEVICE_PUMP_MODEL,
     DEVICE_PUMP_NAME,
     DEVICE_PUMP_SERIAL,
     DOMAIN,
     SENSORS,
+    SENSOR_KEY_UPDATE_TIMESTAMP,
+    SENSOR_KEY_LASTSG_TIMESTAMP,
 )
 
 
@@ -35,10 +41,13 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id][COORDINATOR]
 
     entities = []
+    
+    # Get device name from coordinator data for entity naming
+    device_name = coordinator.data.get(DEVICE_PUMP_NAME, "Carelink")
 
     for sensor_description in SENSORS:
 
-        entity_name = f"{DOMAIN} {sensor_description.name}"
+        entity_name = f"{device_name} {sensor_description.name}"
 
         entities.append(
             # pylint: disable=too-many-function-args
@@ -61,11 +70,11 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.sensor_description = sensor_description
-        self.entity_name = entity_name
+        self._attr_name = entity_name
 
     @property
     def name(self) -> str:
-        return self.sensor_description.name
+        return self._attr_name
 
     @property
     def unique_id(self) -> str:
@@ -113,3 +122,32 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
         attrKey = "{}_attributes".format(self.sensor_description.key)
 
         return self.coordinator.data.setdefault(attrKey, {})
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        # Timestamp sensors should always be available to show when last update was
+        if self.sensor_description.key in (SENSOR_KEY_UPDATE_TIMESTAMP, SENSOR_KEY_LASTSG_TIMESTAMP):
+            return True
+
+        # Check if data is stale based on last update timestamp
+        last_update = self.coordinator.data.get(SENSOR_KEY_UPDATE_TIMESTAMP)
+        if last_update is None:
+            return False
+
+        # If last_update is a string, try to parse it
+        if isinstance(last_update, str):
+            try:
+                last_update = dt_util.parse_datetime(last_update)
+            except (ValueError, TypeError):
+                return False
+
+        if last_update is None:
+            return False
+
+        # Calculate time difference
+        now = dt_util.utcnow()
+        time_diff = now - last_update
+
+        # Mark as unavailable if data is older than threshold
+        return time_diff < timedelta(hours=DATA_STALE_TIMEOUT_HOURS)
