@@ -38,11 +38,13 @@ async def async_setup_entry(
     entities = []
     
     # Get device name from coordinator data for entity naming
-    device_name = coordinator.data.get(DEVICE_PUMP_NAME, "Carelink")
+    device_name = coordinator.data.get(DEVICE_PUMP_NAME, None)
 
     for sensor_description in BINARY_SENSORS:
-
-        entity_name = f"{device_name} {sensor_description.name}"
+        if device_name:
+            entity_name = f"Carelink {device_name} {sensor_description.name}"
+        else:
+            entity_name = f"Carelink {sensor_description.name}"
 
         entities.append(
             # pylint: disable=too-many-function-args
