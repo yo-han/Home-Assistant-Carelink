@@ -36,7 +36,6 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id][COORDINATOR]
 
     entities = []
-    
     # Get device name from coordinator data for entity naming
     device_name = coordinator.data.get(DEVICE_PUMP_NAME, None)
 
