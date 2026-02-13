@@ -19,8 +19,8 @@ from .const import (
     DOMAIN,
     INTEGRATION_NAME,
     BINARY_SENSORS,
-    is_data_stale,
 )
+from .helpers import is_data_stale
 
 
 async def async_setup_entry(
