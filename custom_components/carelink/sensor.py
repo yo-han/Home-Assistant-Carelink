@@ -24,8 +24,8 @@ from .const import (
     INTEGRATION_NAME,
     SENSORS,
     SENSORS_ALWAYS_AVAILABLE,
-    is_data_stale,
 )
+from .helpers import is_data_stale
 
 
 async def async_setup_entry(
@@ -124,7 +124,7 @@ class CarelinkSensorEntity(CoordinatorEntity, SensorEntity):
         # Some sensors (timestamps, alarms) always stay available for safety/troubleshooting
         if self.sensor_description.key in SENSORS_ALWAYS_AVAILABLE:
             return super().available
-        
+
         return super().available and not is_data_stale(
             self.coordinator.data, self.sensor_description.key
         )
