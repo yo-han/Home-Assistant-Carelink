@@ -17,7 +17,9 @@ from .const import (
     DEVICE_PUMP_NAME,
     DEVICE_PUMP_SERIAL,
     DOMAIN,
+    INTEGRATION_NAME,
     BINARY_SENSORS,
+    is_data_stale,
 )
 
 
@@ -31,10 +33,14 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id][COORDINATOR]
 
     entities = []
+    # Get device name from coordinator data for entity naming
+    device_name = coordinator.data.get(DEVICE_PUMP_NAME, None)
 
     for sensor_description in BINARY_SENSORS:
-
-        entity_name = f"{DOMAIN} {sensor_description.name}"
+        if device_name:
+            entity_name = f"{INTEGRATION_NAME} {device_name} {sensor_description.name}"
+        else:
+            entity_name = f"{INTEGRATION_NAME} {sensor_description.name}"
 
         entities.append(
             # pylint: disable=too-many-function-args
@@ -58,11 +64,7 @@ class CarelinkConnectivityEntity(CoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.sensor_description = sensor_description
-        self.entity_name = entity_name
-
-    @property
-    def name(self) -> str:
-        return self.sensor_description.name
+        self._attr_name = entity_name
 
     @property
     def unique_id(self) -> str:
@@ -97,3 +99,11 @@ class CarelinkConnectivityEntity(CoordinatorEntity, BinarySensorEntity):
     @property
     def entity_category(self):
         return self.sensor_description.entity_category
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        # Check coordinator availability and data staleness
+        return super().available and not is_data_stale(
+            self.coordinator.data, self.sensor_description.key
+        )

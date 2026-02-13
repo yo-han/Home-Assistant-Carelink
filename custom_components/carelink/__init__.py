@@ -392,7 +392,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
                     last_alarm["messageId"] = str(fault_id)
             else:
                 last_alarm["messageId"] = "UNKNOWN"
-            
+
             data[SENSOR_KEY_LAST_ALARM] = date_time_local.replace(tzinfo=timezone)
             data[SENSOR_KEY_LAST_ALARM_ATTRS] = last_alarm
             active_notification = get_active_notification(last_alarm, recent_data["notificationHistory"])
@@ -428,7 +428,7 @@ class CarelinkCoordinator(DataUpdateCoordinator):
         else:
             data[SENSOR_KEY_AVG_GLUCOSE_MMOL] = UNAVAILABLE
             data[SENSOR_KEY_AVG_GLUCOSE_MGDL] = UNAVAILABLE
-            
+
         data[SENSOR_KEY_BELOW_HYPO_LIMIT] = recent_data.setdefault(
             "belowHypoLimit", UNAVAILABLE
         )
