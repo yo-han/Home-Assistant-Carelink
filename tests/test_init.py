@@ -450,8 +450,8 @@ class TestMigrateLegacyLogindata:
         assert new_file.exists()
         assert new_file.read_text() == '{"access_token": "test123"}'
 
-        # Check legacy file is removed
-        assert not legacy_file.exists()
+        # Legacy file is kept as fallback (not deleted)
+        assert legacy_file.exists()
 
     def test_migrate_no_legacy_file(self, tmp_path):
         """Test migration does nothing when legacy file doesn't exist."""
