@@ -205,7 +205,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if config["nightscout_url"] and config["nightscout_api"]:
         nightscout_uploader = NightscoutUploader(
             config["nightscout_url"],
-            config["nightscout_api"]
+            config["nightscout_api"],
+            config_path=hass.config.path(),
+            entry_id=entry.entry_id
         )
         hass.data.setdefault(DOMAIN, {})[entry.entry_id].update({UPLOADER: nightscout_uploader})
 
