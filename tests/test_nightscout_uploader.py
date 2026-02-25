@@ -1,5 +1,7 @@
 """Tests for the Nightscout uploader."""
-from datetime import datetime
+import json
+import os
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -346,3 +348,223 @@ class TestNightscoutDataTransformation:
             "BC_MESSAGE_ANOTHER_TEST"
         )
         assert result == "ANOTHER_TEST"
+
+
+class TestNightscoutDeduplication:
+    """Tests for deduplication logic."""
+
+    def test_fingerprint_same_treatment_is_stable(self):
+        """Same treatment data produces the same fingerprint."""
+        entry = {
+            "eventType": "Meal",
+            "created_at": "2024-01-15T12:00:00+01:00",
+            "carbs": 45,
+            "insulin": 3.5,
+        }
+        fp1 = NightscoutUploader._compute_fingerprint(entry, "treatments")
+        fp2 = NightscoutUploader._compute_fingerprint(entry, "treatments")
+        assert fp1 == fp2
+        assert len(fp1) == 64  # SHA-256 hex length
+
+    def test_fingerprint_different_treatments(self):
+        """Different treatment data produces different fingerprints."""
+        entry_a = {
+            "eventType": "Meal",
+            "created_at": "2024-01-15T12:00:00+01:00",
+            "carbs": 45,
+            "insulin": 3.5,
+        }
+        entry_b = {
+            "eventType": "Meal",
+            "created_at": "2024-01-15T13:00:00+01:00",
+            "carbs": 30,
+            "insulin": 2.0,
+        }
+        fp_a = NightscoutUploader._compute_fingerprint(entry_a, "treatments")
+        fp_b = NightscoutUploader._compute_fingerprint(entry_b, "treatments")
+        assert fp_a != fp_b
+
+    def test_fingerprint_same_entry_is_stable(self):
+        """Same SGS entry data produces the same fingerprint."""
+        entry = {
+            "type": "sgv",
+            "dateString": "2024-01-15T12:00:00+01:00",
+            "sgv": 120.0,
+        }
+        fp1 = NightscoutUploader._compute_fingerprint(entry, "entries")
+        fp2 = NightscoutUploader._compute_fingerprint(entry, "entries")
+        assert fp1 == fp2
+        assert len(fp1) == 64
+
+    def test_fingerprint_different_entries(self):
+        """Different SGS entry data produces different fingerprints."""
+        entry_a = {
+            "type": "sgv",
+            "dateString": "2024-01-15T12:00:00+01:00",
+            "sgv": 120.0,
+        }
+        entry_b = {
+            "type": "sgv",
+            "dateString": "2024-01-15T12:05:00+01:00",
+            "sgv": 125.0,
+        }
+        fp_a = NightscoutUploader._compute_fingerprint(entry_a, "entries")
+        fp_b = NightscoutUploader._compute_fingerprint(entry_b, "entries")
+        assert fp_a != fp_b
+
+    def test_devicestatus_not_deduplicated(self):
+        """Devicestatus entries should not produce a fingerprint."""
+        entry = {"device": "MMT-1780", "pump": {"battery": {"status": "OK"}}}
+        fp = NightscoutUploader._compute_fingerprint(entry, "devicestatus")
+        assert fp is None
+
+    async def test_duplicate_entries_not_uploaded(self, mock_nightscout_uploader):
+        """POST is only called once per unique entry, duplicates are skipped."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        with patch.object(
+            mock_nightscout_uploader, "post_async", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = mock_response
+
+            treatment = {
+                "eventType": "Meal",
+                "created_at": "2024-01-15T12:00:00+01:00",
+                "carbs": 45,
+                "insulin": 3.5,
+            }
+
+            # First call: should upload
+            result = await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [treatment], "treatments"
+            )
+            assert result is True
+            assert mock_post.call_count == 1
+
+            # Second call with same data: should skip
+            result = await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [treatment], "treatments"
+            )
+            assert result is True
+            # Still only 1 call - duplicate was skipped
+            assert mock_post.call_count == 1
+
+    async def test_failed_upload_allows_retry(self, mock_nightscout_uploader):
+        """If POST fails, the fingerprint is not stored so retry is possible."""
+        mock_response_fail = MagicMock()
+        mock_response_fail.status_code = 500
+
+        mock_response_ok = MagicMock()
+        mock_response_ok.status_code = 200
+
+        treatment = {
+            "eventType": "Correction Bolus",
+            "created_at": "2024-01-15T14:00:00+01:00",
+            "insulin": 1.0,
+        }
+
+        with patch.object(
+            mock_nightscout_uploader, "post_async", new_callable=AsyncMock
+        ) as mock_post:
+            # First attempt fails
+            mock_post.return_value = mock_response_fail
+            result = await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [treatment], "treatments"
+            )
+            assert result is False
+
+            # Fingerprint should NOT be in seen set
+            fp = NightscoutUploader._compute_fingerprint(treatment, "treatments")
+            assert fp not in mock_nightscout_uploader._seen_fingerprints
+
+            # Retry succeeds
+            mock_post.return_value = mock_response_ok
+            result = await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [treatment], "treatments"
+            )
+            assert result is True
+            assert fp in mock_nightscout_uploader._seen_fingerprints
+
+    async def test_dedup_persists_to_file(self, tmp_path):
+        """A new uploader instance reads previously saved dedup state."""
+        uploader1 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="persist_test",
+        )
+
+        # Simulate a seen fingerprint and save
+        uploader1._seen_fingerprints["abc123"] = datetime.now(timezone.utc).isoformat()
+        await uploader1._save_dedup_state()
+
+        # New instance should load the saved state
+        uploader2 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="persist_test",
+        )
+        await uploader2._load_dedup_state()
+        assert "abc123" in uploader2._seen_fingerprints
+
+    async def test_purge_removes_old_fingerprints(self, mock_nightscout_uploader):
+        """Fingerprints older than 25 hours are removed by purge."""
+        now = datetime.now(timezone.utc)
+        old_ts = (now - timedelta(hours=26)).isoformat()
+        recent_ts = (now - timedelta(hours=1)).isoformat()
+
+        mock_nightscout_uploader._seen_fingerprints = {
+            "old_fp": old_ts,
+            "recent_fp": recent_ts,
+        }
+
+        mock_nightscout_uploader._purge_old_fingerprints()
+
+        assert "old_fp" not in mock_nightscout_uploader._seen_fingerprints
+        assert "recent_fp" in mock_nightscout_uploader._seen_fingerprints
+
+    def test_unknown_data_type_returns_none(self):
+        """Unknown data types should return None (no deduplication)."""
+        entry = {"foo": "bar"}
+        fp = NightscoutUploader._compute_fingerprint(entry, "unknown_type")
+        assert fp is None
+
+    async def test_load_handles_corrupted_json(self, tmp_path):
+        """Corrupted JSON in dedup file falls back to empty dict."""
+        uploader = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="corrupt_test",
+        )
+        # Write invalid JSON to the dedup file
+        dedup_file = os.path.join(str(tmp_path), "carelink_ns_dedup_corrupt_test.json")
+        with open(dedup_file, "w") as f:
+            f.write("{not valid json")
+
+        await uploader._load_dedup_state()
+
+        assert uploader._seen_fingerprints == {}
+        assert uploader._dedup_loaded is True
+
+    async def test_load_idempotency(self, tmp_path):
+        """Second call to _load_dedup_state does not overwrite in-memory changes."""
+        uploader = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="idempotent_test",
+        )
+
+        # First load (no file exists, starts empty)
+        await uploader._load_dedup_state()
+        assert uploader._seen_fingerprints == {}
+
+        # Add a fingerprint in memory
+        uploader._seen_fingerprints["new_fp"] = datetime.now(timezone.utc).isoformat()
+
+        # Second load should be a no-op (guard by _dedup_loaded)
+        await uploader._load_dedup_state()
+        assert "new_fp" in uploader._seen_fingerprints

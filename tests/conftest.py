@@ -176,10 +176,12 @@ def mock_carelink_client(mock_token_data: dict[str, str], tmp_path) -> CarelinkC
 
 
 @pytest.fixture
-def mock_nightscout_uploader() -> NightscoutUploader:
+def mock_nightscout_uploader(tmp_path) -> NightscoutUploader:
     """Return a NightscoutUploader instance for testing."""
     uploader = NightscoutUploader(
         nightscout_url="https://nightscout.example.com",
         nightscout_secret="mock_api_secret",
+        config_path=str(tmp_path),
+        entry_id="test_entry",
     )
     return uploader

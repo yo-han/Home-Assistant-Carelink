@@ -1,10 +1,12 @@
 import argparse
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import logging
+import os
 
+import aiofiles
 import httpx
 
 from .const import (
@@ -12,6 +14,7 @@ from .const import (
 )
 
 NS_USER_AGENT= "Home Assistant Carelink"
+DEDUP_RETENTION_HOURS = 25
 DEBUG = False
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,7 +33,9 @@ class NightscoutUploader:
     def __init__(
         self,
         nightscout_url,
-        nightscout_secret
+        nightscout_secret,
+        config_path=None,
+        entry_id=None
     ):
 
         # Nightscout info
@@ -47,6 +52,22 @@ class NightscoutUploader:
             'Accept': 'application/json',
         }
 
+        # Deduplication state
+        if config_path and entry_id:
+            self._dedup_file_path = os.path.join(
+                config_path, f"carelink_ns_dedup_{entry_id}.json"
+            )
+        elif config_path or entry_id:
+            _LOGGER.warning(
+                "Deduplication disabled: both config_path and entry_id are required, "
+                "got config_path=%s, entry_id=%s", config_path, entry_id
+            )
+            self._dedup_file_path = None
+        else:
+            self._dedup_file_path = None
+        self._seen_fingerprints: dict[str, str] = {}
+        self._dedup_loaded = False
+
     @property
     def async_client(self):
         """Return the httpx client."""
@@ -60,6 +81,71 @@ class NightscoutUploader:
         if self._async_client:
             await self._async_client.aclose()
             self._async_client = None
+
+    @staticmethod
+    def _compute_fingerprint(entry, data_type):
+        """Compute a SHA-256 fingerprint for deduplication.
+
+        Returns None for data types that should always be uploaded (devicestatus).
+        """
+        if data_type == "devicestatus":
+            return None
+
+        if data_type == "treatments":
+            key_fields = (
+                str(entry.get("eventType", "")),
+                str(entry.get("created_at", "")),
+                str(entry.get("carbs", "")),
+                str(entry.get("insulin", "")),
+                str(entry.get("absolute", "")),
+                str(entry.get("notes", "")),
+                str(entry.get("glucose", "")),
+            )
+        elif data_type == "entries":
+            key_fields = (
+                str(entry.get("type", "")),
+                str(entry.get("dateString", "")),
+                str(entry.get("sgv", "")),
+            )
+        else:
+            return None
+
+        raw = "|".join(key_fields)
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    async def _load_dedup_state(self):
+        """Load dedup state from disk (once per uploader lifetime)."""
+        if self._dedup_loaded or not self._dedup_file_path:
+            return
+        try:
+            async with aiofiles.open(self._dedup_file_path, mode="r") as f:
+                self._seen_fingerprints = json.loads(await f.read())
+        except FileNotFoundError:
+            self._seen_fingerprints = {}
+        except (json.JSONDecodeError, OSError) as error:
+            _LOGGER.warning("Failed to load dedup state, starting fresh: %s", error)
+            self._seen_fingerprints = {}
+        self._dedup_loaded = True
+
+    async def _save_dedup_state(self):
+        """Persist dedup state to disk atomically."""
+        if not self._dedup_file_path:
+            return
+        tmp_path = self._dedup_file_path + ".tmp"
+        try:
+            async with aiofiles.open(tmp_path, mode="w") as f:
+                await f.write(json.dumps(self._seen_fingerprints))
+            os.replace(tmp_path, self._dedup_file_path)
+        except OSError as error:
+            _LOGGER.warning("Failed to save dedup state: %s", error)
+
+    def _purge_old_fingerprints(self):
+        """Remove fingerprints older than DEDUP_RETENTION_HOURS."""
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=DEDUP_RETENTION_HOURS)
+        self._seen_fingerprints = {
+            fp: ts for fp, ts in self._seen_fingerprints.items()
+            if datetime.fromisoformat(ts) > cutoff
+        }
 
     async def fetch_async(self, url, headers, params=None):
         """Perform an async get request."""
@@ -227,11 +313,22 @@ class NightscoutUploader:
             return False
         success = True
         url = f"{host}/api/v1/{data_type}"
+        skipped = 0
+        uploaded = 0
         try:
             for entry in data:
+                fingerprint = self._compute_fingerprint(entry, data_type)
+                if fingerprint and fingerprint in self._seen_fingerprints:
+                    skipped += 1
+                    continue
+
                 response = await self.post_async(url, headers=self.__common_headers, data=json.dumps(entry))
                 if not response.status_code == 200:
                     raise ValueError("__set_data() session response is not OK " + str(response.status_code))
+
+                uploaded += 1
+                if fingerprint:
+                    self._seen_fingerprints[fingerprint] = datetime.now(timezone.utc).isoformat()
         except httpx.TimeoutException as error:
             printdbg(f"__set_data() failed: request timeout - {error}")
             success = False
@@ -241,6 +338,7 @@ class NightscoutUploader:
         except ValueError as error:
             printdbg(f"__set_data() failed: {error}")
             success = False
+        printdbg(f"__set_data() {data_type}: uploaded={uploaded}, skipped={skipped}")
         return success
 
     def __getMsgs(self, rawdata, tz):
@@ -458,7 +556,10 @@ class NightscoutUploader:
         self, recent_data, timezone
     ):
         printdbg("__send_recent_data()")
+        await self._load_dedup_state()
+        self._purge_old_fingerprints()
         await self.__slice_recent_data_for_transmission(recent_data, timezone)
+        await self._save_dedup_state()
 
     async def __test_server_connection(self):
         url = f"{self.__nightscout_url}/api/v1/devicestatus.json"
