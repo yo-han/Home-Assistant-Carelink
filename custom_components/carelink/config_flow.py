@@ -1,7 +1,9 @@
 """Config flow for carelink integration."""
 from __future__ import annotations
 
+import ipaddress
 import logging
+import socket
 from typing import Any
 from urllib.parse import urlparse
 
@@ -98,6 +100,22 @@ async def _validate_nightscout(hass: HomeAssistant, data: dict[str, Any]) -> Non
         parsed = urlparse(nightscout_url)
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             raise CannotConnect
+
+        # SSRF protection: reject URLs targeting private/reserved networks
+        hostname = parsed.hostname or ""
+        try:
+            # Resolve hostname to detect private IPs behind DNS names
+            addr_info = socket.getaddrinfo(hostname, None)
+            for _family, _type, _proto, _canonname, sockaddr in addr_info:
+                ip = ipaddress.ip_address(sockaddr[0])
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    _LOGGER.warning(
+                        "Nightscout URL resolves to non-routable address, rejected"
+                    )
+                    raise CannotConnect
+        except socket.gaierror:
+            # DNS resolution failed — let it fail later at connection time
+            pass
 
         uploader = NightscoutUploader(nightscout_url, nightscout_api)
         try:

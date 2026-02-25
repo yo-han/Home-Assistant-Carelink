@@ -162,6 +162,9 @@ PII_FIELDS = {
     "medicalDeviceSerialNumber", "systemId", "email", "phone", "emailAddress",
     "phoneNumber", "address", "dateOfBirth", "dob", "deviceSerialNumber",
     "patientName", "patientDateOfBirth", "patientCareGiver",
+    # Tandem device/account identifiers
+    "serialNumber", "tconnectDeviceId", "pumperId", "accountId",
+    "partNumber",
 }
 
 

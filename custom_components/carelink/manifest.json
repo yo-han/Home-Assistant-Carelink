@@ -10,6 +10,6 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/jnctech/ha-tandem-pump/issues",
   "requirements": ["aiofiles>=0.8.0", "certifi>=2023.0.0", "httpx>=0.23.0"],
-  "version": "1.2.1",
+  "version": "1.2.2",
   "zeroconf": []
 }

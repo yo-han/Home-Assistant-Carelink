@@ -411,14 +411,12 @@ class TandemSourceClient:
 
         if login_resp.status_code != 200:
             raise TandemAuthError(
-                f"Login failed with HTTP {login_resp.status_code}: {login_resp.text[:200]}"
+                f"Login failed with HTTP {login_resp.status_code}"
             )
 
         login_json = login_resp.json()
         if login_json.get("status") != "SUCCESS":
-            raise TandemAuthError(
-                f"Login rejected: {login_json.get('message', 'Unknown error')}"
-            )
+            raise TandemAuthError("Login rejected by server")
 
         _LOGGER.debug("Tandem: Login credentials accepted")
 
@@ -450,7 +448,7 @@ class TandemSourceClient:
 
         if "code" not in query_params:
             raise TandemAuthError(
-                f"No authorization code in redirect URL: {final_url[:200]}"
+                "No authorization code received in redirect"
             )
 
         auth_code = query_params["code"][0]
@@ -476,7 +474,7 @@ class TandemSourceClient:
 
         if token_resp.status_code // 100 != 2:
             raise TandemAuthError(
-                f"Token exchange HTTP {token_resp.status_code}: {token_resp.text[:200]}"
+                f"Token exchange failed with HTTP {token_resp.status_code}"
             )
 
         token_json = token_resp.json()
@@ -517,8 +515,8 @@ class TandemSourceClient:
 
         try:
             claims = json.loads(base64.urlsafe_b64decode(payload))
-        except (json.JSONDecodeError, Exception) as e:
-            raise TandemAuthError(f"Cannot decode JWT payload: {e}") from e
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+            raise TandemAuthError("Cannot decode JWT payload") from e
 
         self.pumper_id = claims.get("pumperId")
         self.account_id = claims.get("accountId")
@@ -578,7 +576,7 @@ class TandemSourceClient:
 
         if resp.status_code != 200:
             raise TandemApiError(
-                f"API GET {url} failed ({resp.status_code}): {resp.text[:300]}"
+                f"API GET failed ({resp.status_code})"
             )
 
         return resp.json()

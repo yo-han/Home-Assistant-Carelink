@@ -5,6 +5,17 @@ All notable changes to the Tandem Source / Carelink integration will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-02-25
+
+### Security
+- **Sanitise error messages**: Removed HTTP response bodies, server-side error details, and internal URLs from all `TandemAuthError` and `TandemApiError` exception messages — only HTTP status codes are included
+- **SSRF protection**: Nightscout URL validation now resolves hostnames and rejects private, loopback, link-local, and reserved IP addresses to prevent Server-Side Request Forgery
+- **Narrow JWT exception handling**: `_extract_jwt_claims()` now catches only `json.JSONDecodeError`, `UnicodeDecodeError`, and `ValueError` instead of bare `Exception`, and error messages no longer leak internal details
+- **Expanded PII redaction**: Added `serialNumber`, `tconnectDeviceId`, `pumperId`, `accountId`, and `partNumber` to the `PII_FIELDS` set used by `sanitize_for_logging()`
+
+### Added
+- 25 new security tests (`test_security.py`) covering error message sanitisation, SSRF protection, JWT decode handling, and PII redaction
+
 ## [1.2.1] - 2026-02-14
 
 ### Added
