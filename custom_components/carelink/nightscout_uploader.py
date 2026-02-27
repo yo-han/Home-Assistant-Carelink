@@ -68,11 +68,10 @@ class NightscoutUploader:
         self._seen_fingerprints: dict[str, str] = {}
         self._dedup_loaded = False
 
-    @property
-    def async_client(self):
+    async def async_client(self):
         """Return the httpx client."""
         if not self._async_client:
-            self._async_client = httpx.AsyncClient()
+            self._async_client = await asyncio.to_thread(httpx.AsyncClient)
 
         return self._async_client
 
@@ -149,7 +148,8 @@ class NightscoutUploader:
 
     async def fetch_async(self, url, headers, params=None):
         """Perform an async get request."""
-        response = await self.async_client.get(
+        client = await self.async_client()
+        response = await client.get(
             url,
             headers=headers,
             params=params,
@@ -160,7 +160,8 @@ class NightscoutUploader:
 
     async def post_async(self, url, headers, data=None, params=None):
         """Perform an async post request."""
-        response = await self.async_client.post(
+        client = await self.async_client()
+        response = await client.post(
             url,
             headers=headers,
             params=params,

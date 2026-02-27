@@ -16,17 +16,17 @@ class TestCarelinkClient:
         assert mock_carelink_client is not None
         assert mock_carelink_client._async_client is None
 
-    def test_async_client_property(self, mock_carelink_client):
-        """Test async_client property creates client on first access."""
-        client = mock_carelink_client.async_client
+    async def test_async_client_method(self, mock_carelink_client):
+        """Test async_client method creates client on first access."""
+        client = await mock_carelink_client.async_client()
         assert client is not None
         # Second access should return same client
-        assert mock_carelink_client.async_client is client
+        assert await mock_carelink_client.async_client() is client
 
     async def test_close(self, mock_carelink_client):
         """Test closing the HTTP client."""
         # Create client first
-        _ = mock_carelink_client.async_client
+        _ = await mock_carelink_client.async_client()
         assert mock_carelink_client._async_client is not None
 
         # Close it
