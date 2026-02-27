@@ -42,17 +42,17 @@ class TestNightscoutUploaderInit:
 class TestNightscoutUploaderClient:
     """Tests for HTTP client management."""
 
-    def test_async_client_property(self, mock_nightscout_uploader):
-        """Test async_client property creates client on first access."""
-        client = mock_nightscout_uploader.async_client
+    async def test_async_client_method(self, mock_nightscout_uploader):
+        """Test async_client method creates client on first access."""
+        client = await mock_nightscout_uploader.async_client()
         assert client is not None
         # Second access should return same client
-        assert mock_nightscout_uploader.async_client is client
+        assert await mock_nightscout_uploader.async_client() is client
 
     async def test_close(self, mock_nightscout_uploader):
         """Test closing the HTTP client."""
         # Create client first
-        _ = mock_nightscout_uploader.async_client
+        _ = await mock_nightscout_uploader.async_client()
         assert mock_nightscout_uploader._async_client is not None
 
         # Close it
