@@ -568,3 +568,105 @@ class TestNightscoutDeduplication:
         # Second load should be a no-op (guard by _dedup_loaded)
         await uploader._load_dedup_state()
         assert "new_fp" in uploader._seen_fingerprints
+
+
+class TestNightscoutTempTarget:
+    """Tests for temp target -> Nightscout Temporary Target upload."""
+
+    def _now(self):
+        return datetime(2024, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))
+
+    def test_temp_target_treatment_fields(self, mock_nightscout_uploader):
+        raw = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        result = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw, ZoneInfo("UTC"), self._now()
+        )
+        assert len(result) == 1
+        entry = result[0]
+        assert entry["eventType"] == "Temporary Target"
+        assert entry["duration"] == 45
+        assert entry["targetTop"] == 150
+        assert entry["targetBottom"] == 150
+        assert entry["reason"] == "Temp Target"
+        assert "_dedupKey" in entry
+
+    def test_no_temp_target_returns_empty(self, mock_nightscout_uploader):
+        raw = {"pumpBannerState": []}
+        result = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw, ZoneInfo("UTC"), self._now()
+        )
+        assert result == []
+
+    def test_missing_banner_key_returns_empty(self, mock_nightscout_uploader):
+        result = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            {}, ZoneInfo("UTC"), self._now()
+        )
+        assert result == []
+
+    def test_dedupkey_stable_across_polls(self, mock_nightscout_uploader):
+        # Poll 1: 45 min remaining at 12:00 -> ends 12:45
+        raw1 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        e1 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw1, ZoneInfo("UTC"), self._now()
+        )[0]
+        # Poll 2: 40 min remaining at 12:05 -> still ends 12:45
+        raw2 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 40}]}
+        later = self._now() + timedelta(minutes=5)
+        e2 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw2, ZoneInfo("UTC"), later
+        )[0]
+        assert e1["_dedupKey"] == e2["_dedupKey"]
+
+    def test_fingerprint_uses_dedupkey(self):
+        e1 = {"eventType": "Temporary Target", "created_at": "a", "_dedupKey": "tt|12:45"}
+        e2 = {"eventType": "Temporary Target", "created_at": "b", "_dedupKey": "tt|12:45"}
+        e3 = {"eventType": "Temporary Target", "created_at": "a", "_dedupKey": "tt|13:00"}
+        fp1 = NightscoutUploader._compute_fingerprint(e1, "treatments")
+        fp2 = NightscoutUploader._compute_fingerprint(e2, "treatments")
+        fp3 = NightscoutUploader._compute_fingerprint(e3, "treatments")
+        assert fp1 == fp2          # same session -> deduped despite different created_at
+        assert fp1 != fp3          # different session end -> distinct
+        assert len(fp1) == 64
+
+    async def test_set_data_strips_dedupkey_from_body(self, mock_nightscout_uploader):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        with patch.object(
+            mock_nightscout_uploader, "post_async", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = mock_response
+            entry = {
+                "eventType": "Temporary Target",
+                "duration": 45,
+                "created_at": "2024-01-15T12:00:00+00:00",
+                "_dedupKey": "Temporary Target|2024-01-15T12:45:00+00:00",
+            }
+            await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [entry], "treatments"
+            )
+            posted_body = json.loads(mock_post.call_args.kwargs["data"])
+            assert "_dedupKey" not in posted_body
+            assert posted_body["eventType"] == "Temporary Target"
+
+    async def test_temp_target_uploaded_once_per_session(self, mock_nightscout_uploader):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        with patch.object(
+            mock_nightscout_uploader, "post_async", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = mock_response
+            entry = {
+                "eventType": "Temporary Target",
+                "duration": 45,
+                "created_at": "2024-01-15T12:00:00+00:00",
+                "_dedupKey": "Temporary Target|2024-01-15T12:45:00+00:00",
+            }
+            await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [entry], "treatments"
+            )
+            # Second poll, different created_at, same session end (same _dedupKey)
+            entry2 = dict(entry, created_at="2024-01-15T12:05:00+00:00")
+            await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [entry2], "treatments"
+            )
+            assert mock_post.call_count == 1

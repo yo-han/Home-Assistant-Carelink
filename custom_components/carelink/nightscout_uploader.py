@@ -15,6 +15,7 @@ from .const import (
 
 NS_USER_AGENT= "Home Assistant Carelink"
 DEDUP_RETENTION_HOURS = 25
+TEMP_TARGET_MGDL = 150
 DEBUG = False
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,6 +92,10 @@ class NightscoutUploader:
             return None
 
         if data_type == "treatments":
+            if entry.get("_dedupKey"):
+                return hashlib.sha256(
+                    str(entry["_dedupKey"]).encode("utf-8")
+                ).hexdigest()
             key_fields = (
                 str(entry.get("eventType", "")),
                 str(entry.get("created_at", "")),
@@ -253,6 +258,17 @@ class NightscoutUploader:
             self.__nightscout_url, data, "treatments"
         )
 
+    async def __setTempTarget(self, rawdata, tz):
+        printdbg("__setTempTarget()")
+        try:
+            data = self.__getTempTarget(rawdata, tz, datetime.now(tz))
+        except Exception as error:
+            printdbg(f"__setTempTarget() exception: {error}")
+            data = []
+        return await self.__set_data(
+            self.__nightscout_url, data, "treatments"
+        )
+
     async def __setBolus(self, rawdata, tz):
         printdbg("__setBolus()")
         try:
@@ -323,7 +339,8 @@ class NightscoutUploader:
                     skipped += 1
                     continue
 
-                response = await self.post_async(url, headers=self.__common_headers, data=json.dumps(entry))
+                payload = {k: v for k, v in entry.items() if not k.startswith("_")}
+                response = await self.post_async(url, headers=self.__common_headers, data=json.dumps(payload))
                 if not response.status_code == 200:
                     raise ValueError("__set_data() session response is not OK " + str(response.status_code))
 
@@ -405,6 +422,27 @@ class NightscoutUploader:
     def __getBasal(self, raw, tz):
         basal=self.__get_treatments(raw, "type", "AUTO_BASAL_DELIVERY")
         return self.__getBasalEntries(basal, tz)
+
+    def __getTempTarget(self, rawdata, tz, now):
+        result = list()
+        for banner in rawdata.get("pumpBannerState") or []:
+            if banner.get("type") == "TEMP_TARGET":
+                time_remaining = banner.get("timeRemaining") or 0
+                end_dt = (now + timedelta(minutes=time_remaining)).replace(
+                    second=0, microsecond=0
+                )
+                result.append(dict(
+                    enteredBy=NS_USER_AGENT,
+                    eventType="Temporary Target",
+                    reason="Temp Target",
+                    duration=time_remaining,
+                    targetTop=TEMP_TARGET_MGDL,
+                    targetBottom=TEMP_TARGET_MGDL,
+                    created_at=now.isoformat(),
+                    _dedupKey=f"Temporary Target|{end_dt.isoformat()}",
+                    ))
+                break
+        return result
 
     def __getSGS(self, raw, tz):
         sgs=self.__get_treatments(raw, "sensorState", "NO_ERROR_MESSAGE")
@@ -551,6 +589,10 @@ class NightscoutUploader:
                 printdbg("sending alert notifications was ok")
         else:
             printdbg("No notification history available, skipping notifications upload")
+        # Sending Temp Target (pumpBannerState block)
+        response = await self.__setTempTarget(recent_data, tz)
+        if response:
+            printdbg("sending temp target was ok")
 
     # Periodic upload to Nightscout
     async def send_recent_data(
