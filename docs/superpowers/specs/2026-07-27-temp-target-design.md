@@ -65,27 +65,35 @@ like the other binary sensors. Automations key off the entity being `off`.
 Upload a single Nightscout "Temporary Target" treatment per temp-target session.
 
 The banner's `timeRemaining` decreases every poll, so a per-poll upload would
-create overlapping, shrinking treatments. **Session end time
-(`now + timeRemaining`, quantized to the minute) is stable across polls**, so it
-is used as the deduplication identity.
+create overlapping, shrinking treatments. The dedup identity is anchored to the
+**first poll that observes the session** (its `created_at`), tracked as an active
+session in the uploader. This avoids reconstructing identity from the wall clock
+plus the integer-minute `timeRemaining`, which is unstable: with sub-minute poll
+intervals (the config allows 30s), `now + timeRemaining` estimates straddle
+minute boundaries and would produce distinct keys for one session.
 
-- In the uploader, read `recent_data["pumpBannerState"]`. If a `TEMP_TARGET`
-  entry is present, build one treatment:
-  - `eventType = "Temporary Target"`
-  - `created_at = now` (ISO, in the site timezone, matching other treatments)
-  - `duration = timeRemaining` (minutes)
-  - `targetTop = targetBottom = 150` (mg/dL — the 780G's fixed temp target;
-    Nightscout stores targets in mg/dL internally, as SGVs are uploaded)
-  - `reason = "Temp Target"`
-  - `enteredBy = NS_USER_AGENT`
-- Attach a private `_dedupKey = f"temptarget|{end_minute_iso}"` field.
-  `_compute_fingerprint` returns `sha256(_dedupKey)` when that field is present;
-  `__set_data` strips `_dedupKey` from the payload before POST.
-- Routed through the existing dedup file (persisted, purged after
+- The uploader holds an active-session record `{"created_at", "dedup_key"}`,
+  persisted to `carelink_ns_temptarget_{entry_id}.json` (atomic write, mirroring
+  the dedup state) so the guarantee survives restarts.
+- On each poll, read `recent_data["pumpBannerState"]`:
+  - No `TEMP_TARGET` entry → clear the active session, upload nothing.
+  - `TEMP_TARGET` present and no active session → start one: `created_at = now`,
+    `dedup_key = f"Temporary Target|{created_at}"`.
+  - `TEMP_TARGET` present with an active session → reuse the stored
+    `created_at` / `dedup_key`.
+- Build one treatment: `eventType = "Temporary Target"`, `created_at` (session
+  start), `duration = timeRemaining` (minutes), `targetTop = targetBottom = 150`
+  (mg/dL — the 780G's fixed temp target; Nightscout stores targets in mg/dL),
+  `reason = "Temp Target"`, `enteredBy = NS_USER_AGENT`, and a private
+  `_dedupKey = session["dedup_key"]`.
+- `_compute_fingerprint` returns `sha256(_dedupKey)` when that field is present;
+  `__set_data` strips `_`-prefixed keys from the payload before POST. Routed
+  through the existing dedup file (persisted, purged after
   `DEDUP_RETENTION_HOURS` = 25h). Result: posted exactly once per session, even
   across Home Assistant restarts.
 - Wired into `__slice_recent_data_for_transmission` as a new
-  `__setTempTarget(recent_data, tz)` step (guarded like the others).
+  `__setTempTarget(recent_data, tz)` step (guarded like the others), which loads
+  the session state before and saves it after.
 
 ### Deliberate limitations (YAGNI, approved)
 

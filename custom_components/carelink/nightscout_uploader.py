@@ -69,6 +69,19 @@ class NightscoutUploader:
         self._seen_fingerprints: dict[str, str] = {}
         self._dedup_loaded = False
 
+        # Active temp target session state (persisted so the "post once per
+        # session" guarantee survives restarts). Anchored to the first poll that
+        # sees the banner, so the dedup identity does not depend on the volatile
+        # end-time estimate derived from an integer-minute timeRemaining.
+        if self._dedup_file_path:
+            self._temptarget_file_path = os.path.join(
+                config_path, f"carelink_ns_temptarget_{entry_id}.json"
+            )
+        else:
+            self._temptarget_file_path = None
+        self._temp_target_session: dict | None = None
+        self._temptarget_loaded = False
+
     async def async_client(self):
         """Return the httpx client."""
         if not self._async_client:
@@ -142,6 +155,32 @@ class NightscoutUploader:
             os.replace(tmp_path, self._dedup_file_path)
         except OSError as error:
             _LOGGER.warning("Failed to save dedup state: %s", error)
+
+    async def _load_temptarget_state(self):
+        """Load the active temp target session from disk (once per lifetime)."""
+        if self._temptarget_loaded or not self._temptarget_file_path:
+            return
+        try:
+            async with aiofiles.open(self._temptarget_file_path, mode="r") as f:
+                self._temp_target_session = json.loads(await f.read())
+        except FileNotFoundError:
+            self._temp_target_session = None
+        except (json.JSONDecodeError, OSError) as error:
+            _LOGGER.warning("Failed to load temp target state, starting fresh: %s", error)
+            self._temp_target_session = None
+        self._temptarget_loaded = True
+
+    async def _save_temptarget_state(self):
+        """Persist the active temp target session to disk atomically."""
+        if not self._temptarget_file_path:
+            return
+        tmp_path = self._temptarget_file_path + ".tmp"
+        try:
+            async with aiofiles.open(tmp_path, mode="w") as f:
+                await f.write(json.dumps(self._temp_target_session))
+            os.replace(tmp_path, self._temptarget_file_path)
+        except OSError as error:
+            _LOGGER.warning("Failed to save temp target state: %s", error)
 
     def _purge_old_fingerprints(self):
         """Remove fingerprints older than DEDUP_RETENTION_HOURS."""
@@ -260,14 +299,17 @@ class NightscoutUploader:
 
     async def __setTempTarget(self, rawdata, tz):
         printdbg("__setTempTarget()")
+        await self._load_temptarget_state()
         try:
             data = self.__getTempTarget(rawdata, tz, datetime.now(tz))
         except Exception as error:
             printdbg(f"__setTempTarget() exception: {error}")
             data = []
-        return await self.__set_data(
+        result = await self.__set_data(
             self.__nightscout_url, data, "treatments"
         )
+        await self._save_temptarget_state()
+        return result
 
     async def __setBolus(self, rawdata, tz):
         printdbg("__setBolus()")
@@ -424,25 +466,39 @@ class NightscoutUploader:
         return self.__getBasalEntries(basal, tz)
 
     def __getTempTarget(self, rawdata, tz, now):
-        result = list()
-        for banner in rawdata.get("pumpBannerState") or []:
-            if banner.get("type") == "TEMP_TARGET":
-                time_remaining = banner.get("timeRemaining") or 0
-                end_dt = (now + timedelta(minutes=time_remaining)).replace(
-                    second=0, microsecond=0
-                )
-                result.append(dict(
-                    enteredBy=NS_USER_AGENT,
-                    eventType="Temporary Target",
-                    reason="Temp Target",
-                    duration=time_remaining,
-                    targetTop=TEMP_TARGET_MGDL,
-                    targetBottom=TEMP_TARGET_MGDL,
-                    created_at=now.isoformat(),
-                    _dedupKey=f"Temporary Target|{end_dt.isoformat()}",
-                    ))
+        banner = None
+        for candidate in rawdata.get("pumpBannerState") or []:
+            if candidate.get("type") == "TEMP_TARGET":
+                banner = candidate
                 break
-        return result
+
+        if banner is None:
+            # No active temp target: end the current session (if any).
+            self._temp_target_session = None
+            return []
+
+        # Anchor the dedup identity to the first poll that saw this session, so
+        # it stays stable regardless of poll timing or integer-minute
+        # timeRemaining jitter.
+        if self._temp_target_session is None:
+            created_at = now.isoformat()
+            self._temp_target_session = {
+                "created_at": created_at,
+                "dedup_key": f"Temporary Target|{created_at}",
+            }
+
+        session = self._temp_target_session
+        time_remaining = banner.get("timeRemaining") or 0
+        return [dict(
+            enteredBy=NS_USER_AGENT,
+            eventType="Temporary Target",
+            reason="Temp Target",
+            duration=time_remaining,
+            targetTop=TEMP_TARGET_MGDL,
+            targetBottom=TEMP_TARGET_MGDL,
+            created_at=session["created_at"],
+            _dedupKey=session["dedup_key"],
+            )]
 
     def __getSGS(self, raw, tz):
         sgs=self.__get_treatments(raw, "sensorState", "NO_ERROR_MESSAGE")

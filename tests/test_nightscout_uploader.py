@@ -604,17 +604,69 @@ class TestNightscoutTempTarget:
         assert result == []
 
     def test_dedupkey_stable_across_polls(self, mock_nightscout_uploader):
-        # Poll 1: 45 min remaining at 12:00 -> ends 12:45
+        # Poll 1: 45 min remaining at 12:00
         raw1 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
         e1 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
             raw1, ZoneInfo("UTC"), self._now()
         )[0]
-        # Poll 2: 40 min remaining at 12:05 -> still ends 12:45
+        # Poll 2: 40 min remaining at 12:05 (same active session)
         raw2 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 40}]}
         later = self._now() + timedelta(minutes=5)
         e2 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
             raw2, ZoneInfo("UTC"), later
         )[0]
+        assert e1["_dedupKey"] == e2["_dedupKey"]
+
+    def test_dedupkey_stable_across_sub_minute_polls(self, mock_nightscout_uploader):
+        # Regression: 30s poll interval + integer-minute timeRemaining must not
+        # produce two dedup keys for the same session (would double-post).
+        raw1 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        t1 = datetime(2024, 1, 15, 12, 0, 10, tzinfo=ZoneInfo("UTC"))
+        e1 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw1, ZoneInfo("UTC"), t1
+        )[0]
+        raw2 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 44}]}
+        t2 = datetime(2024, 1, 15, 12, 0, 40, tzinfo=ZoneInfo("UTC"))
+        e2 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw2, ZoneInfo("UTC"), t2
+        )[0]
+        assert e1["_dedupKey"] == e2["_dedupKey"]
+
+    def test_new_session_after_gap_has_distinct_key(self, mock_nightscout_uploader):
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        on = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        off = {"pumpBannerState": []}
+        e1 = get(on, ZoneInfo("UTC"), self._now())[0]
+        # Temp target turns off -> session ends
+        assert get(off, ZoneInfo("UTC"), self._now() + timedelta(minutes=50)) == []
+        # A brand new session starts later -> must be a distinct dedup identity
+        e2 = get(on, ZoneInfo("UTC"), self._now() + timedelta(hours=3))[0]
+        assert e1["_dedupKey"] != e2["_dedupKey"]
+
+    async def test_session_persists_across_restart(self, tmp_path):
+        raw = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))
+
+        uploader1 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_persist",
+        )
+        await uploader1._load_temptarget_state()
+        e1 = uploader1._NightscoutUploader__getTempTarget(raw, ZoneInfo("UTC"), now)[0]
+        await uploader1._save_temptarget_state()
+
+        # New instance (simulated restart) reads the active session and reuses it
+        uploader2 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_persist",
+        )
+        await uploader2._load_temptarget_state()
+        later = now + timedelta(minutes=5)
+        e2 = uploader2._NightscoutUploader__getTempTarget(raw, ZoneInfo("UTC"), later)[0]
         assert e1["_dedupKey"] == e2["_dedupKey"]
 
     def test_fingerprint_uses_dedupkey(self):
