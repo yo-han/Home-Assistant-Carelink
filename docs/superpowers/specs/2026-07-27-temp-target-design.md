@@ -60,6 +60,13 @@ Availability follows the existing staleness rule via `is_data_stale`: if the pum
 has not reported in `DATA_STALE_TIMEOUT_HOURS` (2h), the sensor goes unavailable
 like the other binary sensors. Automations key off the entity being `off`.
 
+To avoid reporting `on` from a cached banner long after the target ended (which
+would be a false negative for the reminder automation), the coordinator also
+derives `off` once the banner's implied end has passed: `is_temp_target_expired`
+returns `True` when `now > last_report (SENSOR_KEY_UPDATE_TIMESTAMP) +
+time_remaining`. In the normal fresh case the implied end is in the future, so
+this never turns an active target off early; it only fires on stale snapshots.
+
 ## Part B — Nightscout Temporary Target treatment
 
 Upload a single Nightscout "Temporary Target" treatment per temp-target session.
@@ -85,7 +92,11 @@ minute boundaries and would produce distinct keys for one session.
 - A loaded session whose estimated end (`created_at + duration`) is more than
   `TEMP_TARGET_STALE_GRACE` (10 min) in the past is discarded before reuse, so a
   restart spanning the end of one session and the start of another does not
-  reuse the old identity for the new session.
+  reuse the old identity for the new session. This expiry runs **only on the
+  first poll after loading** persisted state (reconciliation), never on a
+  continuously-live session — otherwise a cached banner past its estimated end
+  would rotate the session every grace period and post repeated overlapping
+  treatments.
 - Build one treatment: `eventType = "Temporary Target"`, `created_at` (session
   start), `duration` (the session's initial remaining minutes, so the end stays
   anchored even if the first POST fails and a later poll retries),

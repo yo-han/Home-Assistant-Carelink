@@ -686,6 +686,17 @@ class TestNightscoutTempTarget:
         )[0]
         assert b["_dedupKey"] != a["_dedupKey"]
 
+    def test_live_banner_past_end_does_not_rotate(self, mock_nightscout_uploader):
+        # A continuously-live (or CareLink-cached) banner in the SAME running
+        # process must not rotate the session once its estimated end passes;
+        # rotating would post another overlapping Temporary Target.
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        on = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}]}
+        e1 = get(on, ZoneInfo("UTC"), self._now())[0]  # ends ~12:05
+        # Same banner still returned an hour later, no off edge observed.
+        e2 = get(on, ZoneInfo("UTC"), self._now() + timedelta(hours=1))[0]
+        assert e1["_dedupKey"] == e2["_dedupKey"]
+
     async def test_session_persists_across_restart(self, tmp_path):
         raw = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
         now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))

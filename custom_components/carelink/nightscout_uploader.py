@@ -84,6 +84,9 @@ class NightscoutUploader:
             self._temptarget_file_path = None
         self._temp_target_session: dict | None = None
         self._temptarget_loaded = False
+        # True only for the first poll after loading a persisted session, so the
+        # staleness check reconciles a restart but never rotates a live session.
+        self._temptarget_needs_reconcile = False
 
     async def async_client(self):
         """Return the httpx client."""
@@ -172,6 +175,7 @@ class NightscoutUploader:
             _LOGGER.warning("Failed to load temp target state, starting fresh: %s", error)
             self._temp_target_session = None
         self._temptarget_loaded = True
+        self._temptarget_needs_reconcile = self._temp_target_session is not None
 
     async def _save_temptarget_state(self):
         """Persist the active temp target session to disk atomically."""
@@ -478,15 +482,19 @@ class NightscoutUploader:
         if banner is None:
             # No active temp target: end the current session (if any).
             self._temp_target_session = None
+            self._temptarget_needs_reconcile = False
             return []
 
-        # Discard a persisted session whose window has already elapsed: after a
-        # restart that spans the end of one session and the start of another, the
-        # loaded record would otherwise be reused for a new session.
-        if self._temp_target_session is not None and self.__temp_target_expired(
-            self._temp_target_session, now
-        ):
-            self._temp_target_session = None
+        # Only on the first poll after a restart: discard a persisted session
+        # whose window has already elapsed, so a restart spanning the end of one
+        # session and the start of another does not reuse the old identity. A
+        # continuously-live (or CareLink-cached) banner is never rotated here.
+        if self._temptarget_needs_reconcile:
+            self._temptarget_needs_reconcile = False
+            if self._temp_target_session is not None and self.__temp_target_expired(
+                self._temp_target_session, now
+            ):
+                self._temp_target_session = None
 
         # Anchor the dedup identity and the duration to the first poll that saw
         # this session, so both stay stable across polls (and retries) regardless
