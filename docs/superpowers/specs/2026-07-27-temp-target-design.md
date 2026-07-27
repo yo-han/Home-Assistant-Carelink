@@ -98,9 +98,14 @@ flag, and a time-based grace expiry.
     shift catches a cancel+restart even when it happens entirely between polls
     (no off edge observed).
   - Otherwise → reuse the stored record.
-- Build one treatment: `eventType = "Temporary Target"`, `created_at` (session
-  start), `duration` (the session's initial remaining minutes, so the end stays
-  anchored even if the first POST fails and a later poll retries),
+- `banner_end` and the sensor's expiry both parse `lastConduitDateTime` with the
+  integration's convention (client-local wall-clock, matching
+  `convert_date_to_isodate`), so the Nightscout and binary-sensor paths agree on
+  the same instant on non-UTC sites.
+- Build one treatment: `eventType = "Temporary Target"`, `created_at` (the pump
+  report time at session start, so `created_at + duration == banner_end` even for
+  a delayed snapshot), `duration` (the session's initial remaining minutes, so
+  the end stays anchored even if the first POST fails and a later poll retries),
   `targetTop = targetBottom = 150`
   (mg/dL — the 780G's fixed temp target; Nightscout stores targets in mg/dL),
   `reason = "Temp Target"`, `enteredBy = NS_USER_AGENT`, and a private

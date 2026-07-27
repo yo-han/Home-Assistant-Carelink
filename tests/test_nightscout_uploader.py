@@ -774,6 +774,30 @@ class TestNightscoutTempTarget:
         e2 = uploader2._NightscoutUploader__getTempTarget(raw_later, ZoneInfo("UTC"), later)[0]
         assert e1["_dedupKey"] == e2["_dedupKey"]
 
+    def test_parse_iso_treats_z_as_client_local(self, mock_nightscout_uploader):
+        # Must match the integration convention (convert_date_to_isodate): the
+        # CareLink wall-clock is client-local, so both the sensor and Nightscout
+        # paths resolve the same lastConduitDateTime to the same instant.
+        tz = ZoneInfo("America/New_York")
+        parsed = mock_nightscout_uploader._NightscoutUploader__parse_iso(
+            "2024-01-15T12:00:00.000Z", tz
+        )
+        assert parsed == datetime(2024, 1, 15, 12, 0, tzinfo=tz)
+
+    def test_treatment_end_anchored_to_report_time(self, mock_nightscout_uploader):
+        # Report at 12:00 with 45 min remaining, processed (now) at 12:05: the
+        # posted end (created_at + duration) must be 12:45, not 12:50.
+        raw = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}],
+        }
+        now = datetime(2024, 1, 15, 12, 5, tzinfo=ZoneInfo("UTC"))
+        e = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw, ZoneInfo("UTC"), now
+        )[0]
+        end = datetime.fromisoformat(e["created_at"]) + timedelta(minutes=e["duration"])
+        assert end == datetime(2024, 1, 15, 12, 45, tzinfo=ZoneInfo("UTC"))
+
     def test_fingerprint_uses_dedupkey(self):
         e1 = {"eventType": "Temporary Target", "created_at": "a", "_dedupKey": "tt|12:45"}
         e2 = {"eventType": "Temporary Target", "created_at": "b", "_dedupKey": "tt|12:45"}

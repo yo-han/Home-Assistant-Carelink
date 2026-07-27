@@ -510,7 +510,9 @@ class NightscoutUploader:
                 session = None
 
         if session is None:
-            created_at = now.isoformat()
+            # Anchor created_at to the pump report time so the posted end
+            # (created_at + duration) equals banner_end even for a delayed snapshot.
+            created_at = report_time.isoformat()
             session = {
                 "created_at": created_at,
                 "dedup_key": f"Temporary Target|{created_at}",
@@ -532,16 +534,22 @@ class NightscoutUploader:
 
     @staticmethod
     def __parse_iso(value, tz):
-        """Parse a CareLink ISO timestamp; assume the site tz when none is given."""
+        """Parse a CareLink timestamp as a client-local instant.
+
+        Mirrors the integration's convert_date_to_isodate convention (the
+        wall-clock digits are client-local, any Z/offset is dropped) so the
+        Nightscout expiry and the binary-sensor expiry resolve the same
+        lastConduitDateTime to the same instant on non-UTC sites.
+        """
         if not value:
             return None
         try:
-            dt = datetime.fromisoformat(re.sub(r"\.\d{3}Z$", "+00:00", value))
+            dt = datetime.fromisoformat(
+                re.sub(r"\.\d{3}Z$", "+00:00", value)
+            ).replace(tzinfo=None)
         except (ValueError, TypeError):
             return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=tz)
-        return dt
+        return dt.replace(tzinfo=tz)
 
     def __getSGS(self, raw, tz):
         sgs=self.__get_treatments(raw, "sensorState", "NO_ERROR_MESSAGE")
