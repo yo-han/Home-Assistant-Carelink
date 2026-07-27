@@ -10,6 +10,7 @@ from custom_components.carelink import (
     get_active_notification,
     get_last_marker,
     get_sg,
+    get_temp_target,
     sanitize_for_logging,
 )
 
@@ -423,6 +424,31 @@ class TestGetLastMarker:
 
         # Should return the 18:00 marker (most recent)
         assert result["ATTRS"]["amount"] == 60
+
+
+class TestGetTempTarget:
+    """Tests for the get_temp_target function."""
+
+    def test_temp_target_on(self):
+        banners = [{"type": "TEMP_TARGET", "timeRemaining": 45}]
+        assert get_temp_target(banners) == (True, 45)
+
+    def test_temp_target_off_empty(self):
+        assert get_temp_target([]) == (False, None)
+
+    def test_temp_target_none(self):
+        assert get_temp_target(None) == (False, None)
+
+    def test_temp_target_other_banner_ignored(self):
+        banners = [{"type": "TEMP_BASAL", "timeRemaining": 30}]
+        assert get_temp_target(banners) == (False, None)
+
+    def test_temp_target_found_among_others(self):
+        banners = [
+            {"type": "TEMP_BASAL", "timeRemaining": 30},
+            {"type": "TEMP_TARGET", "timeRemaining": 20},
+        ]
+        assert get_temp_target(banners) == (True, 20)
 
 
 class TestMigrateLegacyLogindata:

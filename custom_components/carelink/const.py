@@ -88,6 +88,8 @@ BINARY_SENSOR_KEY_SENSOR_COMM_STATE = "binary_sensor_sensor_comm_state"
 BINARY_SENSOR_KEY_CONDUIT_IN_RANGE = "binary_sensor_conduit_in_range"
 BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE = "binary_sensor_conduit_pump_in_range"
 BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE = "binary_sensor_conduit_sensor_in_range"
+BINARY_SENSOR_KEY_TEMP_TARGET = "binary_sensor_temp_target"
+BINARY_SENSOR_KEY_TEMP_TARGET_ATTRS = "binary_sensor_temp_target_attributes"
 
 DEVICE_PUMP_SERIAL = "pump serial"
 DEVICE_PUMP_NAME = "pump name"
@@ -491,6 +493,13 @@ BINARY_SENSORS = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         icon="mdi:bluetooth-connect",
         entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    SensorEntityDescription(
+        key=BINARY_SENSOR_KEY_TEMP_TARGET,
+        name="Temp target",
+        device_class=None,
+        icon="mdi:run",
+        entity_category=None,
     ),
 )
 

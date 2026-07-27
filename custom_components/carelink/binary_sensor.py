@@ -101,6 +101,12 @@ class CarelinkConnectivityEntity(CoordinatorEntity, BinarySensorEntity):
         return self.sensor_description.entity_category
 
     @property
+    def extra_state_attributes(self):
+        attr_key = "{}_attributes".format(self.sensor_description.key)
+
+        return self.coordinator.data.setdefault(attr_key, {})
+
+    @property
     def available(self) -> bool:
         """Return True if entity is available."""
         # Check coordinator availability and data staleness
