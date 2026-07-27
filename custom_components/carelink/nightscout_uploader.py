@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 
 import aiofiles
 import httpx
@@ -16,9 +17,12 @@ from .const import (
 NS_USER_AGENT= "Home Assistant Carelink"
 DEDUP_RETENTION_HOURS = 25
 TEMP_TARGET_MGDL = 150
-# Grace past a session's estimated end before a persisted session is treated as
-# stale (guards against reusing a previous session's identity after a restart).
+# Grace past the banner's implied end (pump report time + remaining) before it is
+# treated as stale/ended — guards against a cached banner and end-time jitter.
 TEMP_TARGET_STALE_GRACE = timedelta(minutes=10)
+# Two consecutive banners belong to the same session when their implied end times
+# agree within this tolerance (absorbs integer-minute timeRemaining rounding).
+TEMP_TARGET_END_TOLERANCE = timedelta(minutes=2)
 DEBUG = False
 
 _LOGGER = logging.getLogger(__name__)
@@ -73,9 +77,10 @@ class NightscoutUploader:
         self._dedup_loaded = False
 
         # Active temp target session state (persisted so the "post once per
-        # session" guarantee survives restarts). Anchored to the first poll that
-        # sees the banner, so the dedup identity does not depend on the volatile
-        # end-time estimate derived from an integer-minute timeRemaining.
+        # session" guarantee survives restarts). The session identity is anchored
+        # to the pump's reported end time (lastConduitDateTime + timeRemaining),
+        # which is stable across polls of one session and in the past when the
+        # banner is a stale cached snapshot.
         if self._dedup_file_path:
             self._temptarget_file_path = os.path.join(
                 config_path, f"carelink_ns_temptarget_{entry_id}.json"
@@ -84,9 +89,6 @@ class NightscoutUploader:
             self._temptarget_file_path = None
         self._temp_target_session: dict | None = None
         self._temptarget_loaded = False
-        # True only for the first poll after loading a persisted session, so the
-        # staleness check reconciles a restart but never rotates a live session.
-        self._temptarget_needs_reconcile = False
 
     async def async_client(self):
         """Return the httpx client."""
@@ -175,7 +177,6 @@ class NightscoutUploader:
             _LOGGER.warning("Failed to load temp target state, starting fresh: %s", error)
             self._temp_target_session = None
         self._temptarget_loaded = True
-        self._temptarget_needs_reconcile = self._temp_target_session is not None
 
     async def _save_temptarget_state(self):
         """Persist the active temp target session to disk atomically."""
@@ -482,32 +483,42 @@ class NightscoutUploader:
         if banner is None:
             # No active temp target: end the current session (if any).
             self._temp_target_session = None
-            self._temptarget_needs_reconcile = False
             return []
 
-        # Only on the first poll after a restart: discard a persisted session
-        # whose window has already elapsed, so a restart spanning the end of one
-        # session and the start of another does not reuse the old identity. A
-        # continuously-live (or CareLink-cached) banner is never rotated here.
-        if self._temptarget_needs_reconcile:
-            self._temptarget_needs_reconcile = False
-            if self._temp_target_session is not None and self.__temp_target_expired(
-                self._temp_target_session, now
-            ):
-                self._temp_target_session = None
+        time_remaining = banner.get("timeRemaining") or 0
+        # Anchor the banner's end to the pump's last report time, not the wall
+        # clock: this is stable across polls of one session, and already in the
+        # past when CareLink keeps returning a cached banner after the pump
+        # stopped reporting. Fall back to now only if the report time is missing.
+        report_time = self.__parse_iso(rawdata.get("lastConduitDateTime"), tz) or now
+        banner_end = report_time + timedelta(minutes=time_remaining)
 
-        # Anchor the dedup identity and the duration to the first poll that saw
-        # this session, so both stay stable across polls (and retries) regardless
-        # of poll timing or integer-minute timeRemaining jitter.
-        if self._temp_target_session is None:
+        # Stale or already-ended banner: do not (re)create a session or upload.
+        if now > banner_end + TEMP_TARGET_STALE_GRACE:
+            self._temp_target_session = None
+            return []
+
+        # Start a new session when there is none, or when the end shifts beyond
+        # the jitter tolerance (a cancel+restart, possibly missed between polls).
+        session = self._temp_target_session
+        if session is not None:
+            try:
+                prev_end = datetime.fromisoformat(session["end"])
+            except (KeyError, TypeError, ValueError):
+                prev_end = None
+            if prev_end is None or abs(banner_end - prev_end) > TEMP_TARGET_END_TOLERANCE:
+                session = None
+
+        if session is None:
             created_at = now.isoformat()
-            self._temp_target_session = {
+            session = {
                 "created_at": created_at,
                 "dedup_key": f"Temporary Target|{created_at}",
-                "duration": banner.get("timeRemaining") or 0,
+                "duration": time_remaining,
+                "end": banner_end.isoformat(),
             }
+            self._temp_target_session = session
 
-        session = self._temp_target_session
         return [dict(
             enteredBy=NS_USER_AGENT,
             eventType="Temporary Target",
@@ -520,15 +531,17 @@ class NightscoutUploader:
             )]
 
     @staticmethod
-    def __temp_target_expired(session, now):
-        """True if the session's estimated end (plus a grace) is already past."""
+    def __parse_iso(value, tz):
+        """Parse a CareLink ISO timestamp; assume the site tz when none is given."""
+        if not value:
+            return None
         try:
-            end = datetime.fromisoformat(session["created_at"]) + timedelta(
-                minutes=session.get("duration", 0)
-            )
-        except (KeyError, TypeError, ValueError):
-            return True
-        return now > end + TEMP_TARGET_STALE_GRACE
+            dt = datetime.fromisoformat(re.sub(r"\.\d{3}Z$", "+00:00", value))
+        except (ValueError, TypeError):
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=tz)
+        return dt
 
     def __getSGS(self, raw, tz):
         sgs=self.__get_treatments(raw, "sensorState", "NO_ERROR_MESSAGE")

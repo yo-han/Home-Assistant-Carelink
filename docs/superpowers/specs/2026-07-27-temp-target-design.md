@@ -72,31 +72,32 @@ this never turns an active target off early; it only fires on stale snapshots.
 Upload a single Nightscout "Temporary Target" treatment per temp-target session.
 
 The banner's `timeRemaining` decreases every poll, so a per-poll upload would
-create overlapping, shrinking treatments. The dedup identity is anchored to the
-**first poll that observes the session** (its `created_at`), tracked as an active
-session in the uploader. This avoids reconstructing identity from the wall clock
-plus the integer-minute `timeRemaining`, which is unstable: with sub-minute poll
-intervals (the config allows 30s), `now + timeRemaining` estimates straddle
-minute boundaries and would produce distinct keys for one session.
+create overlapping, shrinking treatments. The session is identified by its
+**implied end time, anchored to the pump's own report time**:
+`banner_end = lastConduitDateTime + timeRemaining`. Unlike `now + timeRemaining`,
+this value is stable across every poll of one session (report time and remaining
+move together in the same pump snapshot), and it is already in the past when
+CareLink returns a cached banner after the pump stopped reporting. This single
+rule replaces the earlier ad-hoc mix of wall-clock end estimates, a reconcile
+flag, and a time-based grace expiry.
 
 - The uploader holds an active-session record
-  `{"created_at", "dedup_key", "duration"}`, persisted to
+  `{"created_at", "dedup_key", "duration", "end"}`, persisted to
   `carelink_ns_temptarget_{entry_id}.json` (atomic write, mirroring the dedup
-  state) so the guarantee survives restarts.
-- On each poll, read `recent_data["pumpBannerState"]`:
+  state) so the guarantee survives restarts. `created_at` / `dedup_key` are
+  anchored to the first poll that started the session; `duration` is the initial
+  remaining minutes (fixed); `end` is `banner_end`.
+- On each poll, read `recent_data["pumpBannerState"]` and compute `banner_end`
+  (falling back to `now + timeRemaining` only if `lastConduitDateTime` is
+  missing):
   - No `TEMP_TARGET` entry → clear the active session, upload nothing.
-  - `TEMP_TARGET` present and no active session → start one: `created_at = now`,
-    `dedup_key = f"Temporary Target|{created_at}"`, `duration = timeRemaining`
-    (the initial remaining minutes, kept fixed for the session).
-  - `TEMP_TARGET` present with an active session → reuse the stored record.
-- A loaded session whose estimated end (`created_at + duration`) is more than
-  `TEMP_TARGET_STALE_GRACE` (10 min) in the past is discarded before reuse, so a
-  restart spanning the end of one session and the start of another does not
-  reuse the old identity for the new session. This expiry runs **only on the
-  first poll after loading** persisted state (reconciliation), never on a
-  continuously-live session — otherwise a cached banner past its estimated end
-  would rotate the session every grace period and post repeated overlapping
-  treatments.
+  - `banner_end` more than `TEMP_TARGET_STALE_GRACE` (10 min) in the past →
+    stale/ended cached banner → clear the session, upload nothing.
+  - No active session, or `|banner_end − stored end| > TEMP_TARGET_END_TOLERANCE`
+    (2 min, absorbing integer-minute rounding) → start a new session. The end
+    shift catches a cancel+restart even when it happens entirely between polls
+    (no off edge observed).
+  - Otherwise → reuse the stored record.
 - Build one treatment: `eventType = "Temporary Target"`, `created_at` (session
   start), `duration` (the session's initial remaining minutes, so the end stays
   anchored even if the first POST fails and a later poll retries),

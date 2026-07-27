@@ -686,16 +686,65 @@ class TestNightscoutTempTarget:
         )[0]
         assert b["_dedupKey"] != a["_dedupKey"]
 
-    def test_live_banner_past_end_does_not_rotate(self, mock_nightscout_uploader):
-        # A continuously-live (or CareLink-cached) banner in the SAME running
-        # process must not rotate the session once its estimated end passes;
-        # rotating would post another overlapping Temporary Target.
+    def test_stale_cached_banner_is_not_uploaded(self, mock_nightscout_uploader):
+        # CareLink keeps returning a banner with a frozen report time after the
+        # pump stopped reporting. Once its implied end (report time + remaining)
+        # is past, it must not be uploaded or rotated into a new treatment.
         get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
-        on = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}]}
-        e1 = get(on, ZoneInfo("UTC"), self._now())[0]  # ends ~12:05
-        # Same banner still returned an hour later, no off edge observed.
-        e2 = get(on, ZoneInfo("UTC"), self._now() + timedelta(hours=1))[0]
-        assert e1["_dedupKey"] == e2["_dedupKey"]
+        banner = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}],
+        }
+        # Seen live at 12:02 (ends ~12:05) -> uploaded
+        assert get(banner, ZoneInfo("UTC"),
+                   datetime(2024, 1, 15, 12, 2, tzinfo=ZoneInfo("UTC"))) != []
+        # Same banner, report time still frozen at 12:00, an hour later -> stale
+        assert get(banner, ZoneInfo("UTC"),
+                   datetime(2024, 1, 15, 13, 0, tzinfo=ZoneInfo("UTC"))) == []
+
+    def test_remaining_jump_starts_new_session(self, mock_nightscout_uploader):
+        # Temp target canceled and a new one started between two polls (no off
+        # edge observed): the jump in implied end must start a new session.
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        first = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}],
+        }
+        e1 = get(first, ZoneInfo("UTC"),
+                 datetime(2024, 1, 15, 12, 1, tzinfo=ZoneInfo("UTC")))[0]  # ends 12:05
+        second = {
+            "lastConduitDateTime": "2024-01-15T12:04:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}],
+        }
+        e2 = get(second, ZoneInfo("UTC"),
+                 datetime(2024, 1, 15, 12, 4, 30, tzinfo=ZoneInfo("UTC")))[0]  # ends 12:49
+        assert e1["_dedupKey"] != e2["_dedupKey"]
+
+    async def test_stale_banner_after_restart_not_reuploaded(self, tmp_path):
+        # Active + persisted, then HA restarts after the session ended while
+        # CareLink still returns the cached banner: no replacement is created.
+        banner = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}],
+        }
+        up1 = NightscoutUploader(
+            nightscout_url="https://test.com", nightscout_secret="secret",
+            config_path=str(tmp_path), entry_id="tt_stale_restart",
+        )
+        await up1._load_temptarget_state()
+        assert up1._NightscoutUploader__getTempTarget(
+            banner, ZoneInfo("UTC"), datetime(2024, 1, 15, 12, 1, tzinfo=ZoneInfo("UTC"))
+        ) != []
+        await up1._save_temptarget_state()
+
+        up2 = NightscoutUploader(
+            nightscout_url="https://test.com", nightscout_secret="secret",
+            config_path=str(tmp_path), entry_id="tt_stale_restart",
+        )
+        await up2._load_temptarget_state()
+        assert up2._NightscoutUploader__getTempTarget(
+            banner, ZoneInfo("UTC"), datetime(2024, 1, 15, 13, 0, tzinfo=ZoneInfo("UTC"))
+        ) == []
 
     async def test_session_persists_across_restart(self, tmp_path):
         raw = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
@@ -720,7 +769,9 @@ class TestNightscoutTempTarget:
         )
         await uploader2._load_temptarget_state()
         later = now + timedelta(minutes=5)
-        e2 = uploader2._NightscoutUploader__getTempTarget(raw, ZoneInfo("UTC"), later)[0]
+        # Realistic countdown: 5 min later 40 remaining -> same implied end.
+        raw_later = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 40}]}
+        e2 = uploader2._NightscoutUploader__getTempTarget(raw_later, ZoneInfo("UTC"), later)[0]
         assert e1["_dedupKey"] == e2["_dedupKey"]
 
     def test_fingerprint_uses_dedupkey(self):
