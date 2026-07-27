@@ -643,6 +643,49 @@ class TestNightscoutTempTarget:
         e2 = get(on, ZoneInfo("UTC"), self._now() + timedelta(hours=3))[0]
         assert e1["_dedupKey"] != e2["_dedupKey"]
 
+    def test_duration_anchored_to_session_start(self, mock_nightscout_uploader):
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        # First seen at 12:00 with 45 min remaining
+        e1 = get(
+            {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]},
+            ZoneInfo("UTC"), self._now()
+        )[0]
+        # A later successful poll (e.g. after a failed first POST) at 12:05 with
+        # 40 remaining must keep the original duration so the end stays 12:45.
+        e2 = get(
+            {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 40}]},
+            ZoneInfo("UTC"), self._now() + timedelta(minutes=5)
+        )[0]
+        assert e1["duration"] == 45
+        assert e2["duration"] == 45
+        assert e2["created_at"] == e1["created_at"]
+
+    async def test_stale_persisted_session_not_reused(self, tmp_path):
+        on = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        # Session A: starts 12:00, ends ~12:45
+        up1 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_stale",
+        )
+        await up1._load_temptarget_state()
+        a = up1._NightscoutUploader__getTempTarget(on, ZoneInfo("UTC"), self._now())[0]
+        await up1._save_temptarget_state()
+
+        # Restart long after A ended; a brand new session B is active.
+        up2 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_stale",
+        )
+        await up2._load_temptarget_state()
+        b = up2._NightscoutUploader__getTempTarget(
+            on, ZoneInfo("UTC"), self._now() + timedelta(hours=2)
+        )[0]
+        assert b["_dedupKey"] != a["_dedupKey"]
+
     async def test_session_persists_across_restart(self, tmp_path):
         raw = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
         now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))

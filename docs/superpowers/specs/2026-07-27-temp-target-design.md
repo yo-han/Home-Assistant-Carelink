@@ -72,17 +72,24 @@ plus the integer-minute `timeRemaining`, which is unstable: with sub-minute poll
 intervals (the config allows 30s), `now + timeRemaining` estimates straddle
 minute boundaries and would produce distinct keys for one session.
 
-- The uploader holds an active-session record `{"created_at", "dedup_key"}`,
-  persisted to `carelink_ns_temptarget_{entry_id}.json` (atomic write, mirroring
-  the dedup state) so the guarantee survives restarts.
+- The uploader holds an active-session record
+  `{"created_at", "dedup_key", "duration"}`, persisted to
+  `carelink_ns_temptarget_{entry_id}.json` (atomic write, mirroring the dedup
+  state) so the guarantee survives restarts.
 - On each poll, read `recent_data["pumpBannerState"]`:
   - No `TEMP_TARGET` entry → clear the active session, upload nothing.
   - `TEMP_TARGET` present and no active session → start one: `created_at = now`,
-    `dedup_key = f"Temporary Target|{created_at}"`.
-  - `TEMP_TARGET` present with an active session → reuse the stored
-    `created_at` / `dedup_key`.
+    `dedup_key = f"Temporary Target|{created_at}"`, `duration = timeRemaining`
+    (the initial remaining minutes, kept fixed for the session).
+  - `TEMP_TARGET` present with an active session → reuse the stored record.
+- A loaded session whose estimated end (`created_at + duration`) is more than
+  `TEMP_TARGET_STALE_GRACE` (10 min) in the past is discarded before reuse, so a
+  restart spanning the end of one session and the start of another does not
+  reuse the old identity for the new session.
 - Build one treatment: `eventType = "Temporary Target"`, `created_at` (session
-  start), `duration = timeRemaining` (minutes), `targetTop = targetBottom = 150`
+  start), `duration` (the session's initial remaining minutes, so the end stays
+  anchored even if the first POST fails and a later poll retries),
+  `targetTop = targetBottom = 150`
   (mg/dL — the 780G's fixed temp target; Nightscout stores targets in mg/dL),
   `reason = "Temp Target"`, `enteredBy = NS_USER_AGENT`, and a private
   `_dedupKey = session["dedup_key"]`.

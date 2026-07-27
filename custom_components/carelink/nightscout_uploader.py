@@ -16,6 +16,9 @@ from .const import (
 NS_USER_AGENT= "Home Assistant Carelink"
 DEDUP_RETENTION_HOURS = 25
 TEMP_TARGET_MGDL = 150
+# Grace past a session's estimated end before a persisted session is treated as
+# stale (guards against reusing a previous session's identity after a restart).
+TEMP_TARGET_STALE_GRACE = timedelta(minutes=10)
 DEBUG = False
 
 _LOGGER = logging.getLogger(__name__)
@@ -477,28 +480,47 @@ class NightscoutUploader:
             self._temp_target_session = None
             return []
 
-        # Anchor the dedup identity to the first poll that saw this session, so
-        # it stays stable regardless of poll timing or integer-minute
-        # timeRemaining jitter.
+        # Discard a persisted session whose window has already elapsed: after a
+        # restart that spans the end of one session and the start of another, the
+        # loaded record would otherwise be reused for a new session.
+        if self._temp_target_session is not None and self.__temp_target_expired(
+            self._temp_target_session, now
+        ):
+            self._temp_target_session = None
+
+        # Anchor the dedup identity and the duration to the first poll that saw
+        # this session, so both stay stable across polls (and retries) regardless
+        # of poll timing or integer-minute timeRemaining jitter.
         if self._temp_target_session is None:
             created_at = now.isoformat()
             self._temp_target_session = {
                 "created_at": created_at,
                 "dedup_key": f"Temporary Target|{created_at}",
+                "duration": banner.get("timeRemaining") or 0,
             }
 
         session = self._temp_target_session
-        time_remaining = banner.get("timeRemaining") or 0
         return [dict(
             enteredBy=NS_USER_AGENT,
             eventType="Temporary Target",
             reason="Temp Target",
-            duration=time_remaining,
+            duration=session["duration"],
             targetTop=TEMP_TARGET_MGDL,
             targetBottom=TEMP_TARGET_MGDL,
             created_at=session["created_at"],
             _dedupKey=session["dedup_key"],
             )]
+
+    @staticmethod
+    def __temp_target_expired(session, now):
+        """True if the session's estimated end (plus a grace) is already past."""
+        try:
+            end = datetime.fromisoformat(session["created_at"]) + timedelta(
+                minutes=session.get("duration", 0)
+            )
+        except (KeyError, TypeError, ValueError):
+            return True
+        return now > end + TEMP_TARGET_STALE_GRACE
 
     def __getSGS(self, raw, tz):
         sgs=self.__get_treatments(raw, "sensorState", "NO_ERROR_MESSAGE")
