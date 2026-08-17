@@ -568,3 +568,286 @@ class TestNightscoutDeduplication:
         # Second load should be a no-op (guard by _dedup_loaded)
         await uploader._load_dedup_state()
         assert "new_fp" in uploader._seen_fingerprints
+
+
+class TestNightscoutTempTarget:
+    """Tests for temp target -> Nightscout Temporary Target upload."""
+
+    def _now(self):
+        return datetime(2024, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))
+
+    def test_temp_target_treatment_fields(self, mock_nightscout_uploader):
+        raw = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        result = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw, ZoneInfo("UTC"), self._now()
+        )
+        assert len(result) == 1
+        entry = result[0]
+        assert entry["eventType"] == "Temporary Target"
+        assert entry["duration"] == 45
+        assert entry["targetTop"] == 150
+        assert entry["targetBottom"] == 150
+        assert entry["reason"] == "Temp Target"
+        assert "_dedupKey" in entry
+
+    def test_no_temp_target_returns_empty(self, mock_nightscout_uploader):
+        raw = {"pumpBannerState": []}
+        result = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw, ZoneInfo("UTC"), self._now()
+        )
+        assert result == []
+
+    def test_missing_banner_key_returns_empty(self, mock_nightscout_uploader):
+        result = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            {}, ZoneInfo("UTC"), self._now()
+        )
+        assert result == []
+
+    def test_dedupkey_stable_across_polls(self, mock_nightscout_uploader):
+        # Poll 1: 45 min remaining at 12:00
+        raw1 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        e1 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw1, ZoneInfo("UTC"), self._now()
+        )[0]
+        # Poll 2: 40 min remaining at 12:05 (same active session)
+        raw2 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 40}]}
+        later = self._now() + timedelta(minutes=5)
+        e2 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw2, ZoneInfo("UTC"), later
+        )[0]
+        assert e1["_dedupKey"] == e2["_dedupKey"]
+
+    def test_dedupkey_stable_across_sub_minute_polls(self, mock_nightscout_uploader):
+        # Regression: 30s poll interval + integer-minute timeRemaining must not
+        # produce two dedup keys for the same session (would double-post).
+        raw1 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        t1 = datetime(2024, 1, 15, 12, 0, 10, tzinfo=ZoneInfo("UTC"))
+        e1 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw1, ZoneInfo("UTC"), t1
+        )[0]
+        raw2 = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 44}]}
+        t2 = datetime(2024, 1, 15, 12, 0, 40, tzinfo=ZoneInfo("UTC"))
+        e2 = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw2, ZoneInfo("UTC"), t2
+        )[0]
+        assert e1["_dedupKey"] == e2["_dedupKey"]
+
+    def test_new_session_after_gap_has_distinct_key(self, mock_nightscout_uploader):
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        on = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        off = {"pumpBannerState": []}
+        e1 = get(on, ZoneInfo("UTC"), self._now())[0]
+        # Temp target turns off -> session ends
+        assert get(off, ZoneInfo("UTC"), self._now() + timedelta(minutes=50)) == []
+        # A brand new session starts later -> must be a distinct dedup identity
+        e2 = get(on, ZoneInfo("UTC"), self._now() + timedelta(hours=3))[0]
+        assert e1["_dedupKey"] != e2["_dedupKey"]
+
+    def test_duration_anchored_to_session_start(self, mock_nightscout_uploader):
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        # First seen at 12:00 with 45 min remaining
+        e1 = get(
+            {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]},
+            ZoneInfo("UTC"), self._now()
+        )[0]
+        # A later successful poll (e.g. after a failed first POST) at 12:05 with
+        # 40 remaining must keep the original duration so the end stays 12:45.
+        e2 = get(
+            {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 40}]},
+            ZoneInfo("UTC"), self._now() + timedelta(minutes=5)
+        )[0]
+        assert e1["duration"] == 45
+        assert e2["duration"] == 45
+        assert e2["created_at"] == e1["created_at"]
+
+    async def test_stale_persisted_session_not_reused(self, tmp_path):
+        on = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        # Session A: starts 12:00, ends ~12:45
+        up1 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_stale",
+        )
+        await up1._load_temptarget_state()
+        a = up1._NightscoutUploader__getTempTarget(on, ZoneInfo("UTC"), self._now())[0]
+        await up1._save_temptarget_state()
+
+        # Restart long after A ended; a brand new session B is active.
+        up2 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_stale",
+        )
+        await up2._load_temptarget_state()
+        b = up2._NightscoutUploader__getTempTarget(
+            on, ZoneInfo("UTC"), self._now() + timedelta(hours=2)
+        )[0]
+        assert b["_dedupKey"] != a["_dedupKey"]
+
+    def test_stale_cached_banner_is_not_uploaded(self, mock_nightscout_uploader):
+        # CareLink keeps returning a banner with a frozen report time after the
+        # pump stopped reporting. Once its implied end (report time + remaining)
+        # is past, it must not be uploaded or rotated into a new treatment.
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        banner = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}],
+        }
+        # Seen live at 12:02 (ends ~12:05) -> uploaded
+        assert get(banner, ZoneInfo("UTC"),
+                   datetime(2024, 1, 15, 12, 2, tzinfo=ZoneInfo("UTC"))) != []
+        # Same banner, report time still frozen at 12:00, an hour later -> stale
+        assert get(banner, ZoneInfo("UTC"),
+                   datetime(2024, 1, 15, 13, 0, tzinfo=ZoneInfo("UTC"))) == []
+
+    def test_remaining_jump_starts_new_session(self, mock_nightscout_uploader):
+        # Temp target canceled and a new one started between two polls (no off
+        # edge observed): the jump in implied end must start a new session.
+        get = mock_nightscout_uploader._NightscoutUploader__getTempTarget
+        first = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}],
+        }
+        e1 = get(first, ZoneInfo("UTC"),
+                 datetime(2024, 1, 15, 12, 1, tzinfo=ZoneInfo("UTC")))[0]  # ends 12:05
+        second = {
+            "lastConduitDateTime": "2024-01-15T12:04:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}],
+        }
+        e2 = get(second, ZoneInfo("UTC"),
+                 datetime(2024, 1, 15, 12, 4, 30, tzinfo=ZoneInfo("UTC")))[0]  # ends 12:49
+        assert e1["_dedupKey"] != e2["_dedupKey"]
+
+    async def test_stale_banner_after_restart_not_reuploaded(self, tmp_path):
+        # Active + persisted, then HA restarts after the session ended while
+        # CareLink still returns the cached banner: no replacement is created.
+        banner = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 5}],
+        }
+        up1 = NightscoutUploader(
+            nightscout_url="https://test.com", nightscout_secret="secret",
+            config_path=str(tmp_path), entry_id="tt_stale_restart",
+        )
+        await up1._load_temptarget_state()
+        assert up1._NightscoutUploader__getTempTarget(
+            banner, ZoneInfo("UTC"), datetime(2024, 1, 15, 12, 1, tzinfo=ZoneInfo("UTC"))
+        ) != []
+        await up1._save_temptarget_state()
+
+        up2 = NightscoutUploader(
+            nightscout_url="https://test.com", nightscout_secret="secret",
+            config_path=str(tmp_path), entry_id="tt_stale_restart",
+        )
+        await up2._load_temptarget_state()
+        assert up2._NightscoutUploader__getTempTarget(
+            banner, ZoneInfo("UTC"), datetime(2024, 1, 15, 13, 0, tzinfo=ZoneInfo("UTC"))
+        ) == []
+
+    async def test_session_persists_across_restart(self, tmp_path):
+        raw = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}]}
+        now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))
+
+        uploader1 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_persist",
+        )
+        await uploader1._load_temptarget_state()
+        e1 = uploader1._NightscoutUploader__getTempTarget(raw, ZoneInfo("UTC"), now)[0]
+        await uploader1._save_temptarget_state()
+
+        # New instance (simulated restart) reads the active session and reuses it
+        uploader2 = NightscoutUploader(
+            nightscout_url="https://test.com",
+            nightscout_secret="secret",
+            config_path=str(tmp_path),
+            entry_id="tt_persist",
+        )
+        await uploader2._load_temptarget_state()
+        later = now + timedelta(minutes=5)
+        # Realistic countdown: 5 min later 40 remaining -> same implied end.
+        raw_later = {"pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 40}]}
+        e2 = uploader2._NightscoutUploader__getTempTarget(raw_later, ZoneInfo("UTC"), later)[0]
+        assert e1["_dedupKey"] == e2["_dedupKey"]
+
+    def test_parse_iso_treats_z_as_client_local(self, mock_nightscout_uploader):
+        # Must match the integration convention (convert_date_to_isodate): the
+        # CareLink wall-clock is client-local, so both the sensor and Nightscout
+        # paths resolve the same lastConduitDateTime to the same instant.
+        tz = ZoneInfo("America/New_York")
+        parsed = mock_nightscout_uploader._NightscoutUploader__parse_iso(
+            "2024-01-15T12:00:00.000Z", tz
+        )
+        assert parsed == datetime(2024, 1, 15, 12, 0, tzinfo=tz)
+
+    def test_treatment_end_anchored_to_report_time(self, mock_nightscout_uploader):
+        # Report at 12:00 with 45 min remaining, processed (now) at 12:05: the
+        # posted end (created_at + duration) must be 12:45, not 12:50.
+        raw = {
+            "lastConduitDateTime": "2024-01-15T12:00:00.000Z",
+            "pumpBannerState": [{"type": "TEMP_TARGET", "timeRemaining": 45}],
+        }
+        now = datetime(2024, 1, 15, 12, 5, tzinfo=ZoneInfo("UTC"))
+        e = mock_nightscout_uploader._NightscoutUploader__getTempTarget(
+            raw, ZoneInfo("UTC"), now
+        )[0]
+        end = datetime.fromisoformat(e["created_at"]) + timedelta(minutes=e["duration"])
+        assert end == datetime(2024, 1, 15, 12, 45, tzinfo=ZoneInfo("UTC"))
+
+    def test_fingerprint_uses_dedupkey(self):
+        e1 = {"eventType": "Temporary Target", "created_at": "a", "_dedupKey": "tt|12:45"}
+        e2 = {"eventType": "Temporary Target", "created_at": "b", "_dedupKey": "tt|12:45"}
+        e3 = {"eventType": "Temporary Target", "created_at": "a", "_dedupKey": "tt|13:00"}
+        fp1 = NightscoutUploader._compute_fingerprint(e1, "treatments")
+        fp2 = NightscoutUploader._compute_fingerprint(e2, "treatments")
+        fp3 = NightscoutUploader._compute_fingerprint(e3, "treatments")
+        assert fp1 == fp2          # same session -> deduped despite different created_at
+        assert fp1 != fp3          # different session end -> distinct
+        assert len(fp1) == 64
+
+    async def test_set_data_strips_dedupkey_from_body(self, mock_nightscout_uploader):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        with patch.object(
+            mock_nightscout_uploader, "post_async", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = mock_response
+            entry = {
+                "eventType": "Temporary Target",
+                "duration": 45,
+                "created_at": "2024-01-15T12:00:00+00:00",
+                "_dedupKey": "Temporary Target|2024-01-15T12:45:00+00:00",
+            }
+            await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [entry], "treatments"
+            )
+            posted_body = json.loads(mock_post.call_args.kwargs["data"])
+            assert "_dedupKey" not in posted_body
+            assert posted_body["eventType"] == "Temporary Target"
+
+    async def test_temp_target_uploaded_once_per_session(self, mock_nightscout_uploader):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        with patch.object(
+            mock_nightscout_uploader, "post_async", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = mock_response
+            entry = {
+                "eventType": "Temporary Target",
+                "duration": 45,
+                "created_at": "2024-01-15T12:00:00+00:00",
+                "_dedupKey": "Temporary Target|2024-01-15T12:45:00+00:00",
+            }
+            await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [entry], "treatments"
+            )
+            # Second poll, different created_at, same session end (same _dedupKey)
+            entry2 = dict(entry, created_at="2024-01-15T12:05:00+00:00")
+            await mock_nightscout_uploader._NightscoutUploader__set_data(
+                "https://nightscout.example.com", [entry2], "treatments"
+            )
+            assert mock_post.call_count == 1

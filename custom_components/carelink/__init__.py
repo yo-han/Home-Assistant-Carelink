@@ -72,6 +72,8 @@ from .const import (
     BINARY_SENSOR_KEY_CONDUIT_IN_RANGE,
     BINARY_SENSOR_KEY_CONDUIT_PUMP_IN_RANGE,
     BINARY_SENSOR_KEY_CONDUIT_SENSOR_IN_RANGE,
+    BINARY_SENSOR_KEY_TEMP_TARGET,
+    BINARY_SENSOR_KEY_TEMP_TARGET_ATTRS,
     SENSOR_KEY_CLIENT_TIMEZONE,
     SENSOR_KEY_APP_MODEL_TYPE,
     SENSOR_KEY_MEDICAL_DEVICE_MANUFACTURER,
@@ -527,6 +529,22 @@ class CarelinkCoordinator(DataUpdateCoordinator):
             "conduitSensorInRange", UNAVAILABLE
         )
 
+        pump_banner_state = recent_data.setdefault("pumpBannerState", [])
+        temp_target_on, temp_target_remaining = get_temp_target(pump_banner_state)
+        # A cached banner past its implied end (report time + remaining) must not
+        # keep reporting on until the generic 2h conduit-staleness threshold.
+        if temp_target_on and is_temp_target_expired(
+            temp_target_remaining,
+            data.get(SENSOR_KEY_UPDATE_TIMESTAMP),
+            datetime.now(timezone),
+        ):
+            temp_target_on = False
+            temp_target_remaining = None
+        data[BINARY_SENSOR_KEY_TEMP_TARGET] = temp_target_on
+        data[BINARY_SENSOR_KEY_TEMP_TARGET_ATTRS] = (
+            {"time_remaining": temp_target_remaining} if temp_target_on else {}
+        )
+
         # Device info
 
         data[DEVICE_PUMP_SERIAL] = recent_data.setdefault(
@@ -591,6 +609,25 @@ def get_sg(sgs: list, pos: int) -> dict:
             error,
         )
         return None
+
+def get_temp_target(pump_banner_state: list) -> tuple[bool, int | None]:
+    """Return (is_on, time_remaining_minutes) for the temp target banner."""
+    for banner in pump_banner_state or []:
+        if banner.get("type") == "TEMP_TARGET":
+            return True, banner.get("timeRemaining")
+    return False, None
+
+def is_temp_target_expired(time_remaining, last_update, now) -> bool:
+    """True if the banner's implied end (last_update + time_remaining) is past.
+
+    Guards against CareLink returning a cached banner after the pump stops
+    reporting: the sensor would otherwise claim temp target is active long after
+    time_remaining says it ended. Returns False when the timestamps needed to
+    decide are missing, keeping the banner's own state.
+    """
+    if time_remaining is None or last_update is None:
+        return False
+    return now > last_update + timedelta(minutes=time_remaining)
 
 def get_active_notification(last_alarm: list, notifications: list) -> dict:
     """Retrieve active notification from notifications list"""

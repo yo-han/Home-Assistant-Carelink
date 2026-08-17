@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 
 import aiofiles
 import httpx
@@ -15,6 +16,13 @@ from .const import (
 
 NS_USER_AGENT= "Home Assistant Carelink"
 DEDUP_RETENTION_HOURS = 25
+TEMP_TARGET_MGDL = 150
+# Grace past the banner's implied end (pump report time + remaining) before it is
+# treated as stale/ended — guards against a cached banner and end-time jitter.
+TEMP_TARGET_STALE_GRACE = timedelta(minutes=10)
+# Two consecutive banners belong to the same session when their implied end times
+# agree within this tolerance (absorbs integer-minute timeRemaining rounding).
+TEMP_TARGET_END_TOLERANCE = timedelta(minutes=2)
 DEBUG = False
 
 _LOGGER = logging.getLogger(__name__)
@@ -68,6 +76,20 @@ class NightscoutUploader:
         self._seen_fingerprints: dict[str, str] = {}
         self._dedup_loaded = False
 
+        # Active temp target session state (persisted so the "post once per
+        # session" guarantee survives restarts). The session identity is anchored
+        # to the pump's reported end time (lastConduitDateTime + timeRemaining),
+        # which is stable across polls of one session and in the past when the
+        # banner is a stale cached snapshot.
+        if self._dedup_file_path:
+            self._temptarget_file_path = os.path.join(
+                config_path, f"carelink_ns_temptarget_{entry_id}.json"
+            )
+        else:
+            self._temptarget_file_path = None
+        self._temp_target_session: dict | None = None
+        self._temptarget_loaded = False
+
     async def async_client(self):
         """Return the httpx client."""
         if not self._async_client:
@@ -91,6 +113,10 @@ class NightscoutUploader:
             return None
 
         if data_type == "treatments":
+            if entry.get("_dedupKey"):
+                return hashlib.sha256(
+                    str(entry["_dedupKey"]).encode("utf-8")
+                ).hexdigest()
             key_fields = (
                 str(entry.get("eventType", "")),
                 str(entry.get("created_at", "")),
@@ -137,6 +163,32 @@ class NightscoutUploader:
             os.replace(tmp_path, self._dedup_file_path)
         except OSError as error:
             _LOGGER.warning("Failed to save dedup state: %s", error)
+
+    async def _load_temptarget_state(self):
+        """Load the active temp target session from disk (once per lifetime)."""
+        if self._temptarget_loaded or not self._temptarget_file_path:
+            return
+        try:
+            async with aiofiles.open(self._temptarget_file_path, mode="r") as f:
+                self._temp_target_session = json.loads(await f.read())
+        except FileNotFoundError:
+            self._temp_target_session = None
+        except (json.JSONDecodeError, OSError) as error:
+            _LOGGER.warning("Failed to load temp target state, starting fresh: %s", error)
+            self._temp_target_session = None
+        self._temptarget_loaded = True
+
+    async def _save_temptarget_state(self):
+        """Persist the active temp target session to disk atomically."""
+        if not self._temptarget_file_path:
+            return
+        tmp_path = self._temptarget_file_path + ".tmp"
+        try:
+            async with aiofiles.open(tmp_path, mode="w") as f:
+                await f.write(json.dumps(self._temp_target_session))
+            os.replace(tmp_path, self._temptarget_file_path)
+        except OSError as error:
+            _LOGGER.warning("Failed to save temp target state: %s", error)
 
     def _purge_old_fingerprints(self):
         """Remove fingerprints older than DEDUP_RETENTION_HOURS."""
@@ -253,6 +305,20 @@ class NightscoutUploader:
             self.__nightscout_url, data, "treatments"
         )
 
+    async def __setTempTarget(self, rawdata, tz):
+        printdbg("__setTempTarget()")
+        await self._load_temptarget_state()
+        try:
+            data = self.__getTempTarget(rawdata, tz, datetime.now(tz))
+        except Exception as error:
+            printdbg(f"__setTempTarget() exception: {error}")
+            data = []
+        result = await self.__set_data(
+            self.__nightscout_url, data, "treatments"
+        )
+        await self._save_temptarget_state()
+        return result
+
     async def __setBolus(self, rawdata, tz):
         printdbg("__setBolus()")
         try:
@@ -323,7 +389,8 @@ class NightscoutUploader:
                     skipped += 1
                     continue
 
-                response = await self.post_async(url, headers=self.__common_headers, data=json.dumps(entry))
+                payload = {k: v for k, v in entry.items() if not k.startswith("_")}
+                response = await self.post_async(url, headers=self.__common_headers, data=json.dumps(payload))
                 if not response.status_code == 200:
                     raise ValueError("__set_data() session response is not OK " + str(response.status_code))
 
@@ -405,6 +472,84 @@ class NightscoutUploader:
     def __getBasal(self, raw, tz):
         basal=self.__get_treatments(raw, "type", "AUTO_BASAL_DELIVERY")
         return self.__getBasalEntries(basal, tz)
+
+    def __getTempTarget(self, rawdata, tz, now):
+        banner = None
+        for candidate in rawdata.get("pumpBannerState") or []:
+            if candidate.get("type") == "TEMP_TARGET":
+                banner = candidate
+                break
+
+        if banner is None:
+            # No active temp target: end the current session (if any).
+            self._temp_target_session = None
+            return []
+
+        time_remaining = banner.get("timeRemaining") or 0
+        # Anchor the banner's end to the pump's last report time, not the wall
+        # clock: this is stable across polls of one session, and already in the
+        # past when CareLink keeps returning a cached banner after the pump
+        # stopped reporting. Fall back to now only if the report time is missing.
+        report_time = self.__parse_iso(rawdata.get("lastConduitDateTime"), tz) or now
+        banner_end = report_time + timedelta(minutes=time_remaining)
+
+        # Stale or already-ended banner: do not (re)create a session or upload.
+        if now > banner_end + TEMP_TARGET_STALE_GRACE:
+            self._temp_target_session = None
+            return []
+
+        # Start a new session when there is none, or when the end shifts beyond
+        # the jitter tolerance (a cancel+restart, possibly missed between polls).
+        session = self._temp_target_session
+        if session is not None:
+            try:
+                prev_end = datetime.fromisoformat(session["end"])
+            except (KeyError, TypeError, ValueError):
+                prev_end = None
+            if prev_end is None or abs(banner_end - prev_end) > TEMP_TARGET_END_TOLERANCE:
+                session = None
+
+        if session is None:
+            # Anchor created_at to the pump report time so the posted end
+            # (created_at + duration) equals banner_end even for a delayed snapshot.
+            created_at = report_time.isoformat()
+            session = {
+                "created_at": created_at,
+                "dedup_key": f"Temporary Target|{created_at}",
+                "duration": time_remaining,
+                "end": banner_end.isoformat(),
+            }
+            self._temp_target_session = session
+
+        return [dict(
+            enteredBy=NS_USER_AGENT,
+            eventType="Temporary Target",
+            reason="Temp Target",
+            duration=session["duration"],
+            targetTop=TEMP_TARGET_MGDL,
+            targetBottom=TEMP_TARGET_MGDL,
+            created_at=session["created_at"],
+            _dedupKey=session["dedup_key"],
+            )]
+
+    @staticmethod
+    def __parse_iso(value, tz):
+        """Parse a CareLink timestamp as a client-local instant.
+
+        Mirrors the integration's convert_date_to_isodate convention (the
+        wall-clock digits are client-local, any Z/offset is dropped) so the
+        Nightscout expiry and the binary-sensor expiry resolve the same
+        lastConduitDateTime to the same instant on non-UTC sites.
+        """
+        if not value:
+            return None
+        try:
+            dt = datetime.fromisoformat(
+                re.sub(r"\.\d{3}Z$", "+00:00", value)
+            ).replace(tzinfo=None)
+        except (ValueError, TypeError):
+            return None
+        return dt.replace(tzinfo=tz)
 
     def __getSGS(self, raw, tz):
         sgs=self.__get_treatments(raw, "sensorState", "NO_ERROR_MESSAGE")
@@ -551,6 +696,10 @@ class NightscoutUploader:
                 printdbg("sending alert notifications was ok")
         else:
             printdbg("No notification history available, skipping notifications upload")
+        # Sending Temp Target (pumpBannerState block)
+        response = await self.__setTempTarget(recent_data, tz)
+        if response:
+            printdbg("sending temp target was ok")
 
     # Periodic upload to Nightscout
     async def send_recent_data(
