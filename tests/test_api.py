@@ -39,6 +39,23 @@ class TestCarelinkClient:
         await mock_carelink_client.close()
         assert mock_carelink_client._async_client is None
 
+    async def test_display_message_body_has_app_version(self, mock_carelink_client):
+        """The display/message body must carry appVersion and os, else the API answers 206."""
+        get_data = AsyncMock(return_value={})
+        with patch.object(mock_carelink_client, "_CarelinkClient__get_data", get_data):
+            await mock_carelink_client._CarelinkClient__get_connect_display_message(
+                "user", "carepartner", "patient"
+            )
+
+        body = json.loads(get_data.call_args.args[2])
+        assert body == {
+            "username": "user",
+            "role": "carepartner",
+            "appVersion": "3.8",
+            "os": "android",
+            "patientId": "patient",
+        }
+
     async def test_fetch_async(self, mock_carelink_client):
         """Test fetch_async method."""
         mock_response = MagicMock()

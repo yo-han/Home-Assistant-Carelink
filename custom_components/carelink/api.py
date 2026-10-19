@@ -13,6 +13,7 @@
    19/09/2022 - Check for general BLE device family to support 770G (Ondrej)
    28/11/2022 - Async version of the library and console test option (Johan)
    29/11/2022 - Pylint problem modifications (Johan)
+   17/10/2026 - Send appVersion and os in the display/message body (fixes HTTP 206 "Upgrade application")
  Copyright 2021-2022, Ondrej Wisniewski
 """
 
@@ -36,6 +37,8 @@ AUTH_FILE_PREFIX = "carelink_logindata"
 LEGACY_AUTH_FILE = "custom_components/carelink/logindata.json"
 SHARED_AUTH_FILE = f"{AUTH_FILE_PREFIX}.json"
 CARELINK_CONFIG_URL = "https://clcloud.minimed.eu/connect/carepartner/v13/discover/android/3.6"
+# Minimum app version the Cumulus display/message endpoint accepts in the request body
+CARELINK_APP_VERSION = "3.8"
 AUTH_ERROR_CODES = [401,403]
 
 DEBUG = False
@@ -308,8 +311,13 @@ class CarelinkClient:
     ):
         printdbg("__get_connect_display_message()")
 
-        # Build user json for request
-        user_json = {"username": username, "role": role}
+        # The Cumulus endpoint answers HTTP 206 "Upgrade application" without these fields in the body
+        user_json = {
+            "username": username,
+            "role": role,
+            "appVersion": CARELINK_APP_VERSION,
+            "os": "android",
+        }
 
         if patient_id:
             user_json["patientId"] = patient_id
