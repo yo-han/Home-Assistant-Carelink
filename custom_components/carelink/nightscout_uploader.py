@@ -17,6 +17,17 @@ NS_USER_AGENT= "Home Assistant Carelink"
 DEDUP_RETENTION_HOURS = 25
 DEBUG = False
 
+CARELINK_TREND_TO_NIGHTSCOUT_DIRECTION = {
+    "NONE": "Flat",
+    "FLAT": "Flat",
+    "UP": "SingleUp",
+    "UP_DOUBLE": "DoubleUp",
+    "UP_TRIPLE": "TripleUp",
+    "DOWN": "SingleDown",
+    "DOWN_DOUBLE": "DoubleDown",
+    "DOWN_TRIPLE": "TripleDown",
+}
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -220,6 +231,13 @@ class NightscoutUploader:
         date_string = dt.isoformat()
         return date, date_string
 
+    @staticmethod
+    def __getTimestampFromIso(value):
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
     async def __setDeviceStatus(self, rawdata):
         printdbg("__setDeviceStatus()")
         try:
@@ -231,10 +249,10 @@ class NightscoutUploader:
             self.__nightscout_url, data, "devicestatus"
         )
 
-    async def __setSGS(self, rawdata, tz):
+    async def __setSGS(self, rawdata, tz, last_sg_trend=None):
         printdbg("__setSGS()")
         try:
-            data = self.__getSGS(rawdata, tz)
+            data = self.__getSGS(rawdata, tz, last_sg_trend)
         except Exception as error:
             printdbg(f"__setSGS() exception: {error}")
             data = []
@@ -406,9 +424,9 @@ class NightscoutUploader:
         basal=self.__get_treatments(raw, "type", "AUTO_BASAL_DELIVERY")
         return self.__getBasalEntries(basal, tz)
 
-    def __getSGS(self, raw, tz):
+    def __getSGS(self, raw, tz, last_sg_trend=None):
         sgs=self.__get_treatments(raw, "sensorState", "NO_ERROR_MESSAGE")
-        return self.__getSGSEntries(sgs, tz)
+        return self.__getSGSEntries(sgs, tz, last_sg_trend)
 
     def __getBasalEntries(self, raw, tz):
         result = list()
@@ -490,14 +508,39 @@ class NightscoutUploader:
                     status=rawdata["systemStatusMessage"],
                     suspended=rawdata["pumpSuspended"])))]
 
-    def __getSGSEntries(self, sgs, tz):
+    def __getCarelinkTrendDirection(self, trend):
+        if trend is None or not str(trend).strip():
+            return "NOT COMPUTABLE"
+
+        direction = CARELINK_TREND_TO_NIGHTSCOUT_DIRECTION.get(
+            str(trend).strip().upper()
+        )
+        if direction is None:
+            _LOGGER.warning(
+                "Unsupported CareLink glucose trend %r; sending NOT COMPUTABLE",
+                trend,
+            )
+            return "NOT COMPUTABLE"
+        return direction
+
+    def __getSGSEntries(self, sgs, tz, last_sg_trend=None):
         result = list()
-        trend, delta="null", "null"
-        for count, sg in enumerate(sgs):
-            try:
-                trend, delta = self.__ns_trend(sgs[count], sgs[count-1])
-            except Exception:
-                pass
+        ordered_sgs = sorted(
+            sgs,
+            key=lambda sg: self.__getTimestampFromIso(sg["timestamp"]),
+        )
+        latest_sg = next(
+            (sg for sg in reversed(ordered_sgs) if float(sg["sg"]) > 0),
+            None,
+        )
+
+        for count, sg in enumerate(ordered_sgs):
+            if count:
+                trend, delta = self.__ns_trend(sg, ordered_sgs[count - 1])
+            else:
+                trend, delta = "null", "null"
+            if sg is latest_sg:
+                trend = self.__getCarelinkTrendDirection(last_sg_trend)
             date, date_string=self.__getDataStringFromIso(sg["timestamp"], tz)
             result.append(dict(
                 device=NS_USER_AGENT,
@@ -518,7 +561,9 @@ class NightscoutUploader:
         # Sending all SGS
         sgs = recent_data.get("sgs")
         if sgs is not None:
-            response = await self.__setSGS(sgs, tz)
+            response = await self.__setSGS(
+                sgs, tz, recent_data.get("lastSGTrend")
+            )
             if response:
                 printdbg("sending SGS entries was ok")
         else:
