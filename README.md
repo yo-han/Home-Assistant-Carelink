@@ -136,6 +136,7 @@ In order to be able to show the active insulin reported by the pump, the remaini
 #### Uploaded data
 - DeviceStatus
 - Glucose entries
+- The newest valid glucose entry uses CareLink's `lastSGTrend`, mapped to Nightscout's direction values. Older entries retain calculated directions using timestamp-ordered readings; unsupported CareLink values are sent as `NOT COMPUTABLE` and logged.
 - Basal
 - Bolus
 - AutoBolus

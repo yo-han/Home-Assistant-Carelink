@@ -148,6 +148,118 @@ class TestNightscoutDataTransformation:
         assert trend == "Flat"
         assert delta == 0
 
+    def test_get_sgs_entries_uses_carelink_trend_for_latest_reading(
+        self, mock_nightscout_uploader
+    ):
+        """Use CareLink's current trend and order historical readings by time."""
+        sgs = [
+            {
+                "timestamp": "2024-01-15T12:00:00.000Z",
+                "sg": 100,
+                "sensorState": "NO_ERROR_MESSAGE",
+            },
+            {
+                "timestamp": "2024-01-15T11:50:00.000Z",
+                "sg": 120,
+                "sensorState": "NO_ERROR_MESSAGE",
+            },
+            {
+                "timestamp": "2024-01-15T11:55:00.000Z",
+                "sg": 110,
+                "sensorState": "NO_ERROR_MESSAGE",
+            },
+        ]
+
+        entries = mock_nightscout_uploader._NightscoutUploader__getSGSEntries(
+            sgs, ZoneInfo("UTC"), "UP"
+        )
+
+        assert [entry["sgv"] for entry in entries] == [120, 110, 100]
+        assert [entry["direction"] for entry in entries] == [
+            "null",
+            "SingleDown",
+            "SingleUp",
+        ]
+        assert entries[-1]["delta"] == -10
+
+    @pytest.mark.parametrize(
+        ("carelink_trend", "expected_direction"),
+        [
+            ("NONE", "Flat"),
+            ("FLAT", "Flat"),
+            ("UP", "SingleUp"),
+            ("UP_DOUBLE", "DoubleUp"),
+            ("UP_TRIPLE", "TripleUp"),
+            ("DOWN", "SingleDown"),
+            ("DOWN_DOUBLE", "DoubleDown"),
+            ("DOWN_TRIPLE", "TripleDown"),
+        ],
+    )
+    def test_get_sgs_entries_maps_carelink_trend(
+        self, mock_nightscout_uploader, carelink_trend, expected_direction
+    ):
+        """Map CareLink trend codes to Nightscout direction values."""
+        sgs = [
+            {
+                "timestamp": "2024-01-15T11:55:00.000Z",
+                "sg": 100,
+                "sensorState": "NO_ERROR_MESSAGE",
+            },
+            {
+                "timestamp": "2024-01-15T12:00:00.000Z",
+                "sg": 110,
+                "sensorState": "NO_ERROR_MESSAGE",
+            },
+        ]
+
+        entries = mock_nightscout_uploader._NightscoutUploader__getSGSEntries(
+            sgs, ZoneInfo("UTC"), carelink_trend
+        )
+
+        assert entries[-1]["direction"] == expected_direction
+
+    def test_get_sgs_entries_unknown_carelink_trend_is_not_computable(
+        self, mock_nightscout_uploader, caplog
+    ):
+        """Do not create a directional arrow from an unknown CareLink value."""
+        sgs = [
+            {
+                "timestamp": "2024-01-15T11:55:00.000Z",
+                "sg": 100,
+                "sensorState": "NO_ERROR_MESSAGE",
+            }
+        ]
+
+        entries = mock_nightscout_uploader._NightscoutUploader__getSGSEntries(
+            sgs, ZoneInfo("UTC"), "UNRECOGNIZED"
+        )
+
+        assert entries[-1]["direction"] == "NOT COMPUTABLE"
+        assert "Unsupported CareLink glucose trend" in caplog.text
+
+    async def test_slice_recent_data_passes_carelink_trend_to_sgs(
+        self, mock_nightscout_uploader
+    ):
+        """Forward the raw CareLink trend to the SGV transformation."""
+        sgs = [{"timestamp": "2024-01-15T12:00:00.000Z", "sg": 100}]
+        timezone = ZoneInfo("UTC")
+
+        with patch.object(
+            mock_nightscout_uploader,
+            "_NightscoutUploader__setDeviceStatus",
+            new_callable=AsyncMock,
+        ), patch.object(
+            mock_nightscout_uploader,
+            "_NightscoutUploader__setSGS",
+            new_callable=AsyncMock,
+        ) as set_sgs:
+            await mock_nightscout_uploader._NightscoutUploader__slice_recent_data_for_transmission(
+                {"sgs": sgs, "lastSGTrend": "DOWN"},
+                timezone,
+            )
+
+        set_sgs.assert_awaited_once_with(sgs, timezone, "DOWN")
+
     def test_ns_trend_single_up(self, mock_nightscout_uploader):
         """Test trend calculation for slight increase."""
         present = {"sg": 110}
