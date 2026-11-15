@@ -144,6 +144,12 @@ In order to be able to show the active insulin reported by the pump, the remaini
 - Alerts
 - Messages
 
+## Dashboard card
+
+To show the reading on a dashboard, [SugarTV Card](https://github.com/wiltodelta/homeassistant-sugartv-card) (HACS) works with this integration out of the box. Pick the `Last glucose level` sensor (mg/dl or mmol) in the card editor, and it finds the matching `Last glucose trend` entity by itself. Point `insulin_value` at the `Active insulin` sensor to show the pump's active insulin above the reading.
+
+![SugarTV Card in a wide and a tall dashboard slot](https://raw.githubusercontent.com/wiltodelta/homeassistant-sugartv-card/v0.17.1/sugartv-card-layouts.png)
+
 ## Enable debug logging
 
 The [logger](https://www.home-assistant.io/integrations/logger/) integration lets you define the level of logging activities in Home Assistant. Turning on debug mode will show more information about unsupported devices in your logbook.
